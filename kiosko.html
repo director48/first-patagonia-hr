@@ -645,67 +645,100 @@
         startCountdown('countdownBar', 'countdownTxt', 5, reset)
 
       } else {
-        // ── SALIDA — verificar desviación del turno ────────────
-        const workedMin = (now - new Date(clockRecord.clock_in)) / 60000
-
-        // Calcular duración del turno asignado
-        let scheduledMin = null
-        if (currentSchedule?.shift_start && currentSchedule?.shift_end) {
-          const [sh, sm] = currentSchedule.shift_start.split(':').map(Number)
-          const [eh, em] = currentSchedule.shift_end.split(':').map(Number)
-          scheduledMin = (eh * 60 + em) - (sh * 60 + sm)
-          if (scheduledMin <= 0) scheduledMin += 24 * 60  // turno cruza medianoche
-        }
-
-        const deviation = scheduledMin !== null ? workedMin - scheduledMin : 0
+        // ── SALIDA — comparar contra ventana del turno (inicio Y fin) ──
         let needsReason  = false
-        let deviationType = null
+        let needsReview  = false
+        let deviationData = null
 
-        if (scheduledMin !== null) {
-          if (deviation < -UNDER_THRESHOLD_MIN) {
-            // Salió más de 15 min antes → requiere motivo
-            needsReason   = true
-            deviationType = 'early'
-          } else if (deviation >= OVER_THRESHOLD_MIN) {
-            // Trabajó 30+ min extra → requiere motivo, se marca para revisión
-            needsReason   = true
-            deviationType = 'overtime'
+        if (currentSchedule?.shift_start && currentSchedule?.shift_end) {
+          const clockInDate = clockRecord.clock_in.split('T')[0]
+
+          // Construir horario programado como objetos Date
+          const schedStart = new Date(`${clockInDate}T${currentSchedule.shift_start}:00`)
+          const schedEnd   = new Date(`${clockInDate}T${currentSchedule.shift_end}:00`)
+          if (schedEnd <= schedStart) schedEnd.setDate(schedEnd.getDate() + 1) // turno cruza medianoche
+
+          const lateArrivalMin    = Math.round((new Date(clockRecord.clock_in) - schedStart) / 60000)
+          const earlyDepartureMin = Math.round((schedEnd - now) / 60000)
+          const overtimeMin       = Math.round((now - schedEnd) / 60000)
+          const workedMin         = Math.round((now - new Date(clockRecord.clock_in)) / 60000)
+          const scheduledMin      = Math.round((schedEnd - schedStart) / 60000)
+
+          let mainType = null
+
+          if (lateArrivalMin > UNDER_THRESHOLD_MIN) {
+            // Llegó más de 15 min tarde → más importante que cualquier otra desviación
+            mainType    = 'late_arrival'
+            needsReason = true
+            needsReview = true
+          } else if (overtimeMin >= OVER_THRESHOLD_MIN) {
+            // Se quedó 30+ min extra
+            mainType    = 'overtime'
+            needsReason = true
+            needsReview = true
+          } else if (earlyDepartureMin > UNDER_THRESHOLD_MIN) {
+            // Salió más de 15 min antes
+            mainType    = 'early_exit'
+            needsReason = true
+            needsReview = true
           }
-          // Entre -15 y +29 min → normal, no requiere motivo
+          // Rango [-15, +29] → normal, sin motivo
+
+          if (mainType) {
+            deviationData = { mainType, lateArrivalMin, earlyDepartureMin, overtimeMin, workedMin, scheduledMin }
+          }
         }
 
-        if (needsReason) {
-          // Guardar datos del clock_out pendiente y mostrar pantalla de motivo
-          pendingClockOut = { now, needsReview: deviationType === 'overtime', deviationType }
-          showReasonPrompt(deviationType, workedMin, scheduledMin)
+        if (needsReason && deviationData) {
+          pendingClockOut = { now, needsReview, deviationData }
+          showReasonPrompt(deviationData)
           btn.disabled = false
         } else {
-          // Salida normal (sin desviación significativa)
           await saveClockOut(now, '', false)
         }
       }
     }
 
-    function showReasonPrompt(type, workedMin, scheduledMin) {
-      const wH = Math.floor(workedMin / 60)
-      const wM = Math.round(workedMin % 60)
-      const sH = Math.floor(scheduledMin / 60)
-      const sM = Math.round(scheduledMin % 60)
-      const workedStr   = `${wH}h ${wM > 0 ? wM + 'm' : ''}`.trim()
-      const schedStr    = `${sH}h ${sM > 0 ? sM + 'm' : ''}`.trim()
-      const diffMin     = Math.abs(Math.round(workedMin - scheduledMin))
-      const diffStr     = `${Math.floor(diffMin/60) > 0 ? Math.floor(diffMin/60) + 'h ' : ''}${diffMin%60 > 0 ? diffMin%60 + 'min' : ''}`.trim()
+    // Convierte minutos a string legible: 279 → "4h 39min"
+    function minsToStr(m) {
+      m = Math.abs(Math.round(m))
+      const h = Math.floor(m / 60)
+      const min = m % 60
+      if (h > 0 && min > 0) return `${h}h ${min}min`
+      if (h > 0)             return `${h}h`
+      return `${min}min`
+    }
+
+    function showReasonPrompt(data) {
+      const { mainType, lateArrivalMin, earlyDepartureMin, overtimeMin, workedMin, scheduledMin } = data
 
       document.getElementById('reasonName').textContent = currentProfile.full_name.split(' ')[0]
 
-      const alert = document.getElementById('reasonAlert')
-      if (type === 'early') {
-        alert.style.borderLeft = '3px solid rgba(217,119,6,.6)'
-        alert.innerHTML = `⚠ Registraste <strong>${workedStr}</strong> trabajadas.<br>Tu turno era de <strong>${schedStr}</strong>.<br><span style="color:rgba(255,180,50,.9)">Saliste ${diffStr} antes de lo previsto.</span>`
+      const al = document.getElementById('reasonAlert')
+      let msg = ''
+      let borderColor = 'rgba(217,119,6,.6)'
+
+      if (mainType === 'late_arrival') {
+        borderColor = 'rgba(220,38,38,.55)'
+        msg = `⚠ Llegaste <strong>${minsToStr(lateArrivalMin)} tarde</strong> a tu turno.<br>`
+        if (overtimeMin > 0)        msg += `Saliste <strong>${minsToStr(overtimeMin)} después</strong> del fin de turno.<br>`
+        else if (earlyDepartureMin > 0) msg += `Saliste <strong>${minsToStr(earlyDepartureMin)} antes</strong> del fin de turno.<br>`
+        msg += `<span style="color:rgba(255,160,160,.9)">Trabajaste ${minsToStr(workedMin)} de ${minsToStr(scheduledMin)} programadas.</span>`
+
+      } else if (mainType === 'overtime') {
+        borderColor = 'rgba(0,184,169,.5)'
+        msg = `✓ Turno de <strong>${minsToStr(scheduledMin)}</strong> · trabajaste <strong>${minsToStr(workedMin)}</strong>.<br>`
+        msg += `<span style="color:rgba(100,220,210,.9)">Te quedaste ${minsToStr(overtimeMin)} extra después de tu turno.</span>`
+
       } else {
-        alert.style.borderLeft = '3px solid rgba(0,184,169,.5)'
-        alert.innerHTML = `✓ Registraste <strong>${workedStr}</strong> trabajadas.<br>Tu turno era de <strong>${schedStr}</strong>.<br><span style="color:rgba(100,220,210,.9)">Trabajaste ${diffStr} extra.</span>`
+        // early_exit
+        borderColor = 'rgba(217,119,6,.6)'
+        msg = `⚠ Saliste <strong>${minsToStr(earlyDepartureMin)} antes</strong> del fin de tu turno.<br>`
+        msg += `<span style="color:rgba(255,180,50,.9)">Trabajaste ${minsToStr(workedMin)} de ${minsToStr(scheduledMin)} programadas.</span>`
       }
+
+      al.style.borderLeft = `3px solid ${borderColor}`
+      al.innerHTML = msg
 
       document.getElementById('reasonText').value = ''
       document.getElementById('confirmReasonBtn').disabled = true
