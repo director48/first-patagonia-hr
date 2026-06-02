@@ -185,9 +185,20 @@ function clockStatus(record) {
   return 'missing_exit'                           // olvidó marcar salida
 }
 
-function calcWorkedMinutes(record) {
+function calcWorkedMinutes(record, scheduledMinutes = null) {
   if (!record || !record.clock_in || !record.clock_out) return 0
-  return (new Date(record.clock_out) - new Date(record.clock_in)) / 60000
+  const actual = (new Date(record.clock_out) - new Date(record.clock_in)) / 60000
+
+  if (scheduledMinutes === null) return actual  // sin turno asignado: contar exacto
+
+  const deviation = actual - scheduledMinutes
+
+  if (deviation >= 0 && deviation < 30) {
+    // Trabajó entre 0 y 29 min extra → no cuentan los minutos de más
+    return scheduledMinutes
+  }
+  // Trabajó menos (exacto) o 30+ min extra (también exacto, para revisión del admin)
+  return actual
 }
 
 function workedLabel(record) {

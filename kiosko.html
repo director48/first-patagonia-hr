@@ -384,6 +384,24 @@
     <div class="countdown-txt" id="countdownTxt"></div>
   </div>
 
+  <!-- ─── MOTIVO DE DIFERENCIA ─── -->
+  <div class="state" id="state-reason">
+    <div class="greeting-name" id="reasonName"></div>
+    <div id="reasonAlert" style="font-size:clamp(.82rem,1.5vw,.95rem);text-align:center;margin-bottom:1.5rem;line-height:1.7;max-width:360px;padding:1rem 1.5rem;border-radius:10px;background:rgba(255,255,255,.07)"></div>
+    <div style="width:100%;max-width:360px">
+      <label style="display:block;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:.5rem">
+        Escribe el motivo
+      </label>
+      <textarea id="reasonText" placeholder="Ej: Terminé antes porque la limpieza estuvo lista temprano..."
+        style="width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.15);border-radius:10px;color:var(--cream);font-family:var(--sans);font-size:.95rem;padding:1rem;resize:none;height:100px;outline:none"
+        oninput="document.getElementById('confirmReasonBtn').disabled = this.value.trim().length < 5"></textarea>
+    </div>
+    <button class="btn-main btn-salida" id="confirmReasonBtn" onclick="confirmClockOut()" disabled style="margin-top:1rem">
+      Confirmar salida
+    </button>
+    <button class="btn-main btn-cancel" onclick="cancelAction()" style="margin-top:.5rem">Cancelar</button>
+  </div>
+
   <!-- ─── JORNADA COMPLETA ─── -->
   <div class="state" id="state-done">
     <div class="done-icon">🌙</div>
@@ -408,9 +426,18 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/client.js"></script>
   <script>
-    let currentProfile = null
-    let clockRecord    = null
-    let countdownTimer = null
+    let currentProfile  = null
+    let clockRecord     = null
+    let currentSchedule = null   // turno asignado hoy
+    let countdownTimer  = null
+    let pendingClockOut = null   // { now, needsReview, deviationType }
+
+    // ── Reglas de horas ───────────────────────────────────────
+    // < turno: cuenta minutos exactos
+    // 0-29 min extra: NO cuenta (conversaciones, demoras menores)
+    // 30+ min extra: cuenta como posible HH.EE., requiere motivo
+    const OVER_THRESHOLD_MIN  = 30   // minutos mínimos para que cuente el extra
+    const UNDER_THRESHOLD_MIN = 15   // margen de tolerancia para salida anticipada
 
     // ── Reloj en vivo ──────────────────────────────────────────
     function tick() {
@@ -476,14 +503,17 @@
         return
       }
 
-      // Obtener fichaje de hoy
+      // Obtener fichaje y turno asignado de hoy
       const todayStr = new Date().toISOString().split('T')[0]
-      const { data: clock } = await sb.from('clock_records')
-        .select('*').eq('employee_id', profile.id).eq('date', todayStr).maybeSingle()
+      const [{ data: clock }, { data: sched }] = await Promise.all([
+        sb.from('clock_records').select('*').eq('employee_id', profile.id).eq('date', todayStr).maybeSingle(),
+        sb.from('schedules').select('*').eq('employee_id', profile.id).eq('date', todayStr).maybeSingle()
+      ])
 
-      currentProfile = profile
-      clockRecord    = clock
-      btn.disabled   = false
+      currentProfile  = profile
+      clockRecord     = clock
+      currentSchedule = sched
+      btn.disabled    = false
 
       // Decidir qué mostrar
       if (clock?.clock_in && clock?.clock_out) {
@@ -540,34 +570,116 @@
 
       const now      = new Date()
       const todayStr = now.toISOString().split('T')[0]
-      let actionLabel = ''
 
       if (!clockRecord || !clockRecord.clock_in) {
+        // ── ENTRADA ────────────────────────────────────────────
         const { data, error } = await sb.from('clock_records').upsert({
           employee_id: currentProfile.id,
-          date:        todayStr,
-          clock_in:    now.toISOString()
+          date: todayStr,
+          clock_in: now.toISOString()
         }, { onConflict: 'employee_id,date' }).select().single()
 
         if (error) { btn.disabled = false; showAction(); return }
         clockRecord = data
-        actionLabel = 'ENTRADA REGISTRADA'
-      } else {
-        const { data, error } = await sb.from('clock_records')
-          .update({ clock_out: now.toISOString() })
-          .eq('id', clockRecord.id).select().single()
 
-        if (error) { btn.disabled = false; showAction(); return }
-        clockRecord = data
-        actionLabel = 'SALIDA REGISTRADA'
+        await sb.auth.signOut()
+        const timeStr = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+        document.getElementById('successLabel').textContent = 'ENTRADA REGISTRADA'
+        document.getElementById('successTime').textContent  = timeStr
+        document.getElementById('successName').textContent  = currentProfile.full_name
+        showState('state-success')
+        startCountdown('countdownBar', 'countdownTxt', 5, reset)
+
+      } else {
+        // ── SALIDA — verificar desviación del turno ────────────
+        const workedMin = (now - new Date(clockRecord.clock_in)) / 60000
+
+        // Calcular duración del turno asignado
+        let scheduledMin = null
+        if (currentSchedule?.shift_start && currentSchedule?.shift_end) {
+          const [sh, sm] = currentSchedule.shift_start.split(':').map(Number)
+          const [eh, em] = currentSchedule.shift_end.split(':').map(Number)
+          scheduledMin = (eh * 60 + em) - (sh * 60 + sm)
+          if (scheduledMin <= 0) scheduledMin += 24 * 60  // turno cruza medianoche
+        }
+
+        const deviation = scheduledMin !== null ? workedMin - scheduledMin : 0
+        let needsReason  = false
+        let deviationType = null
+
+        if (scheduledMin !== null) {
+          if (deviation < -UNDER_THRESHOLD_MIN) {
+            // Salió más de 15 min antes → requiere motivo
+            needsReason   = true
+            deviationType = 'early'
+          } else if (deviation >= OVER_THRESHOLD_MIN) {
+            // Trabajó 30+ min extra → requiere motivo, se marca para revisión
+            needsReason   = true
+            deviationType = 'overtime'
+          }
+          // Entre -15 y +29 min → normal, no requiere motivo
+        }
+
+        if (needsReason) {
+          // Guardar datos del clock_out pendiente y mostrar pantalla de motivo
+          pendingClockOut = { now, needsReview: deviationType === 'overtime', deviationType }
+          showReasonPrompt(deviationType, workedMin, scheduledMin)
+          btn.disabled = false
+        } else {
+          // Salida normal (sin desviación significativa)
+          await saveClockOut(now, '', false)
+        }
+      }
+    }
+
+    function showReasonPrompt(type, workedMin, scheduledMin) {
+      const wH = Math.floor(workedMin / 60)
+      const wM = Math.round(workedMin % 60)
+      const sH = Math.floor(scheduledMin / 60)
+      const sM = Math.round(scheduledMin % 60)
+      const workedStr   = `${wH}h ${wM > 0 ? wM + 'm' : ''}`.trim()
+      const schedStr    = `${sH}h ${sM > 0 ? sM + 'm' : ''}`.trim()
+      const diffMin     = Math.abs(Math.round(workedMin - scheduledMin))
+      const diffStr     = `${Math.floor(diffMin/60) > 0 ? Math.floor(diffMin/60) + 'h ' : ''}${diffMin%60 > 0 ? diffMin%60 + 'min' : ''}`.trim()
+
+      document.getElementById('reasonName').textContent = currentProfile.full_name.split(' ')[0]
+
+      const alert = document.getElementById('reasonAlert')
+      if (type === 'early') {
+        alert.style.borderLeft = '3px solid rgba(217,119,6,.6)'
+        alert.innerHTML = `⚠ Registraste <strong>${workedStr}</strong> trabajadas.<br>Tu turno era de <strong>${schedStr}</strong>.<br><span style="color:rgba(255,180,50,.9)">Saliste ${diffStr} antes de lo previsto.</span>`
+      } else {
+        alert.style.borderLeft = '3px solid rgba(0,184,169,.5)'
+        alert.innerHTML = `✓ Registraste <strong>${workedStr}</strong> trabajadas.<br>Tu turno era de <strong>${schedStr}</strong>.<br><span style="color:rgba(100,220,210,.9)">Trabajaste ${diffStr} extra.</span>`
       }
 
-      // Cerrar sesión
-      await sb.auth.signOut()
+      document.getElementById('reasonText').value = ''
+      document.getElementById('confirmReasonBtn').disabled = true
+      showState('state-reason')
+    }
 
-      // Mostrar éxito
+    async function confirmClockOut() {
+      const reason = document.getElementById('reasonText').value.trim()
+      if (!reason || reason.length < 5) return
+      if (!pendingClockOut) return
+      await saveClockOut(pendingClockOut.now, reason, pendingClockOut.needsReview)
+      pendingClockOut = null
+    }
+
+    async function saveClockOut(now, note, needsReview) {
+      showState('state-loading')
+      const { data, error } = await sb.from('clock_records').update({
+        clock_out: now.toISOString(),
+        deviation_note: note,
+        needs_review: needsReview
+      }).eq('id', clockRecord.id).select().single()
+
+      if (error) { showAction(); return }
+      clockRecord = data
+
+      await sb.auth.signOut()
       const timeStr = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
-      document.getElementById('successLabel').textContent = actionLabel
+      document.getElementById('successLabel').textContent = 'SALIDA REGISTRADA'
       document.getElementById('successTime').textContent  = timeStr
       document.getElementById('successName').textContent  = currentProfile.full_name
       showState('state-success')

@@ -57,8 +57,32 @@
 
         <!-- Tabs -->
         <div class="filter-tabs mb-3">
-          <button class="filter-tab active" onclick="setTab('dias', this)">Días libres</button>
+          <button class="filter-tab active" onclick="setTab('dias', this)">Permisos</button>
           <button class="filter-tab" onclick="setTab('extras', this)">Horas extras</button>
+          <button class="filter-tab" onclick="setTab('asistencia', this)">⚠ Revisar asistencia <span id="reviewBadge" style="background:var(--red);color:white;border-radius:999px;padding:.1rem .45rem;font-size:.65rem;margin-left:.3rem;display:none">0</span></button>
+        </div>
+
+        <!-- REVISAR ASISTENCIA -->
+        <div id="tabAsistencia" class="hidden">
+          <div class="page-header">
+            <div><h1 style="font-family:var(--font-serif);font-size:1.6rem;font-weight:400">Revisión de asistencia</h1></div>
+            <p style="font-size:.84rem;color:var(--t2);margin-top:.25rem">Registros donde el empleado salió antes o después de lo planificado</p>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Empleado</th><th>Fecha</th><th>Entrada</th><th>Salida</th>
+                    <th>Horas reales</th><th>Turno asignado</th><th>Motivo del empleado</th><th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="reviewTable">
+                  <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <!-- DÍAS LIBRES -->
@@ -160,6 +184,8 @@
       el.classList.add('active')
       document.getElementById('tabDias').classList.toggle('hidden', tab !== 'dias')
       document.getElementById('tabExtras').classList.toggle('hidden', tab !== 'extras')
+      document.getElementById('tabAsistencia').classList.toggle('hidden', tab !== 'asistencia')
+      if (tab === 'asistencia') loadReviewQueue()
     }
 
     function setDLFilter(f, el) {
@@ -315,6 +341,77 @@
       else loadHE()
     }
 
+    async function loadReviewQueue() {
+      const { data } = await sb.from('clock_records')
+        .select('*, profiles!employee_id(full_name)')
+        .eq('needs_review', true)
+        .not('clock_out', 'is', null)
+        .order('date', { ascending: false })
+
+      const tbody = document.getElementById('reviewTable')
+
+      // Actualizar badge
+      const count = data?.length ?? 0
+      const badge = document.getElementById('reviewBadge')
+      badge.textContent = count
+      badge.style.display = count > 0 ? 'inline' : 'none'
+
+      if (!data?.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:var(--t2)">Sin registros pendientes de revisión ✓</td></tr>'
+        return
+      }
+
+      tbody.innerHTML = await Promise.all(data.map(async r => {
+        // Obtener turno asignado
+        const { data: sched } = await sb.from('schedules').select('shift_start,shift_end')
+          .eq('employee_id', r.employee_id).eq('date', r.date).maybeSingle()
+
+        const workedMin = (new Date(r.clock_out) - new Date(r.clock_in)) / 60000
+        const wH = Math.floor(workedMin / 60), wM = Math.round(workedMin % 60)
+        const workedStr = `${wH}h ${wM > 0 ? wM+'m' : ''}`.trim()
+
+        let schedStr = '—'
+        let deviationStr = ''
+        if (sched?.shift_start && sched?.shift_end) {
+          const [sh, sm] = sched.shift_start.split(':').map(Number)
+          const [eh, em] = sched.shift_end.split(':').map(Number)
+          let schedMin = (eh * 60 + em) - (sh * 60 + sm)
+          if (schedMin <= 0) schedMin += 1440
+          const sH = Math.floor(schedMin / 60), sM = schedMin % 60
+          schedStr = `${sched.shift_start.slice(0,5)} – ${sched.shift_end.slice(0,5)} (${sH}h${sM>0?' '+sM+'m':''})`
+          const diff = Math.round(workedMin - schedMin)
+          deviationStr = diff >= 0
+            ? `<span style="color:var(--teal);font-size:.78rem">+${diff}m extra</span>`
+            : `<span style="color:var(--red);font-size:.78rem">${diff}m antes</span>`
+        }
+
+        const dt = new Date(r.date + 'T12:00:00')
+        return `<tr>
+          <td><strong>${r.profiles?.full_name || '—'}</strong></td>
+          <td>${dt.toLocaleDateString('es-CL',{weekday:'short',day:'2-digit',month:'short'})}</td>
+          <td>${formatTime(r.clock_in)}</td>
+          <td>${formatTime(r.clock_out)}</td>
+          <td><strong>${workedStr}</strong> ${deviationStr}</td>
+          <td style="font-size:.8rem;color:var(--t2)">${schedStr}</td>
+          <td style="font-size:.82rem;font-style:italic;color:var(--t2);max-width:180px">${r.deviation_note || '—'}</td>
+          <td>
+            <div class="flex-center gap-1">
+              <button class="btn btn--success btn--sm" onclick="approveReview('${r.id}')">Aprobar</button>
+              <button class="btn btn--ghost btn--sm" onclick="openClockEdit('${r.id}','${r.clock_in}')">Corregir</button>
+            </div>
+          </td>
+        </tr>`
+      })).then(rows => rows.join(''))
+    }
+
+    async function approveReview(id) {
+      const { error } = await sb.from('clock_records').update({ needs_review: false }).eq('id', id)
+      if (error) { showToast('Error', 'error'); return }
+      showToast('Revisado ✓', 'success')
+      loadReviewQueue()
+      loadStats()
+    }
+
     ;(async () => {
       const ctx = await initPage()
       if (!ctx) return
@@ -323,6 +420,15 @@
       loadStats()
       loadDL()
       loadHE()
+      // Mostrar badge si hay asistencias pendientes
+      const { count } = await sb.from('clock_records')
+        .select('*', { count: 'exact', head: true })
+        .eq('needs_review', true).not('clock_out', 'is', null)
+      if (count > 0) {
+        const badge = document.getElementById('reviewBadge')
+        badge.textContent = count
+        badge.style.display = 'inline'
+      }
     })()
   </script>
 </body>
