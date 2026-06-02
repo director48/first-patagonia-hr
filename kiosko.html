@@ -400,7 +400,7 @@
         style="width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.15);border-radius:10px;color:var(--cream);font-family:var(--sans);font-size:.95rem;padding:1rem;resize:none;height:100px;outline:none"
         oninput="document.getElementById('confirmReasonBtn').disabled = this.value.trim().length < 5"></textarea>
     </div>
-    <button class="btn-main btn-salida" id="confirmReasonBtn" onclick="confirmClockOut()" disabled style="margin-top:1rem">
+    <button class="btn-main btn-salida" id="confirmReasonBtn" onclick="confirmReason()" disabled style="margin-top:1rem">
       Confirmar salida
     </button>
     <button class="btn-main btn-cancel" onclick="cancelAction()" style="margin-top:.5rem">Cancelar</button>
@@ -430,13 +430,14 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/client.js"></script>
   <script>
-    let currentProfile  = null
-    let clockRecord     = null
-    let currentSchedule = null
-    let countdownTimer  = null
-    let pendingClockOut = null
-    let idleTimer       = null
-    let idleInterval    = null
+    let currentProfile   = null
+    let clockRecord      = null
+    let currentSchedule  = null
+    let countdownTimer   = null
+    let pendingClockOut  = null
+    let pendingLateArrival = null   // { recordId, lateMin }
+    let idleTimer        = null
+    let idleInterval     = null
     const IDLE_TIMEOUT  = 30   // segundos hasta auto-logout
     const IDLE_WARNING  = 20   // segundos hasta mostrar aviso
 
@@ -626,16 +627,33 @@
       const todayStr = now.toISOString().split('T')[0]
 
       if (!clockRecord || !clockRecord.clock_in) {
-        // ── ENTRADA ────────────────────────────────────────────
+        // ── ENTRADA — verificar llegada tardía antes de guardar ─
+        let lateArrivalMin = 0
+        if (currentSchedule?.shift_start) {
+          const schedStart = new Date(`${todayStr}T${currentSchedule.shift_start}:00`)
+          lateArrivalMin = Math.round((now - schedStart) / 60000)
+        }
+        const isLate = lateArrivalMin > UNDER_THRESHOLD_MIN
+
         const { data, error } = await sb.from('clock_records').upsert({
           employee_id: currentProfile.id,
-          date: todayStr,
-          clock_in: now.toISOString()
+          date:        todayStr,
+          clock_in:    now.toISOString(),
+          needs_review: isLate   // marcar inmediatamente si llega tarde
         }, { onConflict: 'employee_id,date' }).select().single()
 
         if (error) { btn.disabled = false; showAction(); return }
         clockRecord = data
 
+        if (isLate) {
+          // Pedir motivo — no hacer signOut todavía
+          pendingLateArrival = { recordId: data.id, lateMin: lateArrivalMin }
+          showLateArrivalPrompt(lateArrivalMin)
+          btn.disabled = false
+          return
+        }
+
+        // Llegada dentro del margen → éxito directo
         await sb.auth.signOut()
         const timeStr = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
         document.getElementById('successLabel').textContent = 'ENTRADA REGISTRADA'
@@ -740,9 +758,62 @@
       al.style.borderLeft = `3px solid ${borderColor}`
       al.innerHTML = msg
 
+      // Restaurar botón al modo "salida" (puede haberse cambiado por late arrival)
+      const btn = document.getElementById('confirmReasonBtn')
+      btn.textContent = 'Confirmar salida'
+      btn.className   = 'btn-main btn-salida'
+      btn.disabled    = true
+
       document.getElementById('reasonText').value = ''
-      document.getElementById('confirmReasonBtn').disabled = true
       showState('state-reason')
+    }
+
+    // ── Llegada tardía ─────────────────────────────────────────
+    function showLateArrivalPrompt(lateMin) {
+      document.getElementById('reasonName').textContent = currentProfile.full_name.split(' ')[0]
+
+      const al = document.getElementById('reasonAlert')
+      al.style.borderLeft = '3px solid rgba(220,38,38,.55)'
+      al.innerHTML = `⚠ Llegaste <strong>${minsToStr(lateMin)} tarde</strong> a tu turno.<br>
+        <span style="color:rgba(255,160,160,.9)">El administrador será informado. Escribe el motivo.</span>`
+
+      const btn = document.getElementById('confirmReasonBtn')
+      btn.textContent = 'Confirmar entrada'
+      btn.className   = 'btn-main btn-entrada'
+      btn.disabled    = true
+
+      document.getElementById('reasonText').value = ''
+      showState('state-reason')
+    }
+
+    async function confirmLateArrival() {
+      const reason = document.getElementById('reasonText').value.trim()
+      if (!reason || reason.length < 5) return
+      if (!pendingLateArrival) return
+
+      showState('state-loading')
+      await sb.from('clock_records').update({
+        deviation_note: reason
+      }).eq('id', pendingLateArrival.recordId)
+
+      pendingLateArrival = null
+
+      await sb.auth.signOut()
+      const timeStr = new Date(clockRecord.clock_in).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+      document.getElementById('successLabel').textContent = 'ENTRADA REGISTRADA'
+      document.getElementById('successTime').textContent  = timeStr
+      document.getElementById('successName').textContent  = currentProfile.full_name
+      showState('state-success')
+      startCountdown('countdownBar', 'countdownTxt', 5, reset)
+    }
+
+    // Router: decide si es confirmación de entrada tardía o salida
+    function confirmReason() {
+      if (pendingLateArrival) {
+        confirmLateArrival()
+      } else {
+        confirmClockOut()
+      }
     }
 
     async function confirmClockOut() {
@@ -775,6 +846,8 @@
 
     // ── Cancelar ───────────────────────────────────────────────
     async function cancelAction() {
+      pendingLateArrival = null
+      pendingClockOut    = null
       await sb.auth.signOut()
       reset()
     }
@@ -816,8 +889,10 @@
     function reset() {
       stopIdleTimer()
       clearInterval(countdownTimer)
-      currentProfile = null
-      clockRecord    = null
+      currentProfile     = null
+      clockRecord        = null
+      pendingLateArrival = null
+      pendingClockOut    = null
       document.getElementById('inputEmail').value    = ''
       document.getElementById('inputPassword').value = ''
       document.getElementById('loginError').classList.remove('show')

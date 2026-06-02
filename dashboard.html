@@ -83,6 +83,22 @@
           </div>
         </div>
 
+        <!-- Admin: Estado del equipo ahora -->
+        <div id="teamStatusSection" class="hidden mb-3">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Estado del equipo ahora</span>
+              <div style="display:flex;align-items:center;gap:.75rem">
+                <span class="text-muted text-sm" id="teamStatusTime"></span>
+                <button class="btn btn--ghost btn--sm" onclick="loadTeamStatus(profile)">↻</button>
+              </div>
+            </div>
+            <div id="teamStatusBody" style="padding:.25rem 1rem .5rem">
+              <div style="color:var(--t2);padding:1.5rem;text-align:center;font-size:.88rem">Cargando...</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Cards bottom -->
         <div class="grid-2">
           <div class="card">
@@ -232,6 +248,118 @@
       `
     }
 
+    // ── Estado del equipo (admin) ─────────────────────────────
+    async function loadTeamStatus(p) {
+      const section = document.getElementById('teamStatusSection')
+      section.classList.remove('hidden')
+      document.getElementById('teamStatusTime').textContent =
+        new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+
+      const nowMins = new Date().getHours() * 60 + new Date().getMinutes()
+
+      const [{ data: scheds }, { data: clocks }] = await Promise.all([
+        sb.from('schedules')
+          .select('*, profiles!employee_id(full_name)')
+          .eq('date', todayStr)
+          .eq('day_type', 'turno'),
+        sb.from('clock_records')
+          .select('employee_id, clock_in, clock_out, needs_review')
+          .eq('date', todayStr)
+      ])
+
+      const clockMap = {}
+      ;(clocks || []).forEach(c => { clockMap[c.employee_id] = c })
+
+      const missing = []   // no han llegado y el turno ya empezó
+      const working = []   // en turno ahora
+      const done    = []   // completaron turno
+
+      ;(scheds || []).forEach(s => {
+        const clock = clockMap[s.employee_id]
+        const [h, m] = s.shift_start.split(':').map(Number)
+        const shiftStartMins = h * 60 + m
+        const minutesLate = nowMins - shiftStartMins
+
+        if (clock?.clock_in && clock?.clock_out) {
+          done.push({ ...s, clock })
+        } else if (clock?.clock_in) {
+          working.push({ ...s, clock })
+        } else if (minutesLate > 15) {
+          missing.push({ ...s, minutesLate })
+        }
+        // Turno futuro (empieza en más de 15 min) → no mostrar todavía
+      })
+
+      const body = document.getElementById('teamStatusBody')
+      let html = ''
+
+      // Alerta de ausentes
+      if (missing.length > 0) {
+        html += `<div style="background:rgba(220,38,38,.06);border-left:4px solid var(--red);padding:.75rem 1rem;margin-bottom:1rem;border-radius:0 6px 6px 0">
+          <div style="font-weight:600;color:var(--red);font-size:.88rem;margin-bottom:.35rem">
+            ⚠ ${missing.length} empleado${missing.length > 1 ? 's' : ''} no ha${missing.length > 1 ? 'n' : ''} llegado
+          </div>
+          ${missing.map(s => {
+            const lateStr = minsToStr(s.minutesLate)
+            return `<div style="font-size:.83rem;padding:.2rem 0;display:flex;justify-content:space-between;align-items:center">
+              <span><strong>${s.profiles?.full_name || '—'}</strong> · ${s.shift_start.slice(0,5)}–${s.shift_end.slice(0,5)}</span>
+              <span style="color:var(--red);font-size:.78rem;font-weight:500">${lateStr} tarde</span>
+            </div>`
+          }).join('')}
+        </div>`
+      }
+
+      // En turno
+      if (working.length > 0) {
+        html += `<div style="margin-bottom:.75rem">
+          <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--t2);font-weight:500;padding:.35rem 0;border-bottom:1px solid var(--border)">
+            En turno ahora · ${working.length}
+          </div>
+          ${working.map(s => {
+            const inTime = new Date(s.clock.clock_in).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+            const wMins = (new Date() - new Date(s.clock.clock_in)) / 60000
+            const flag  = s.clock.needs_review ? ' <span style="color:var(--amber);font-size:.72rem" title="Llegó tarde">⚠</span>' : ''
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border)">
+              <span style="font-size:.84rem"><strong>${s.profiles?.full_name || '—'}</strong>${flag}</span>
+              <span style="font-size:.8rem;color:var(--teal)">↓ ${inTime} · ${minsToStr(wMins)} trabajadas</span>
+            </div>`
+          }).join('')}
+        </div>`
+      }
+
+      // Completaron
+      if (done.length > 0) {
+        html += `<div>
+          <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--t2);font-weight:500;padding:.35rem 0;border-bottom:1px solid var(--border)">
+            Turno completado · ${done.length}
+          </div>
+          ${done.map(s => {
+            const inT  = new Date(s.clock.clock_in).toLocaleTimeString('es-CL',  { hour: '2-digit', minute: '2-digit' })
+            const outT = new Date(s.clock.clock_out).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border)">
+              <span style="font-size:.84rem;color:var(--t2)">${s.profiles?.full_name || '—'}</span>
+              <span style="font-size:.78rem;color:var(--t2)">${inT} → ${outT}</span>
+            </div>`
+          }).join('')}
+        </div>`
+      }
+
+      if (!missing.length && !working.length && !done.length) {
+        html = '<div style="text-align:center;color:var(--t2);padding:1.5rem;font-size:.88rem">Sin turnos asignados para hoy o ninguno ha empezado aún</div>'
+      }
+
+      body.innerHTML = html
+    }
+
+    // Helper minsToStr también disponible aquí (duplicado del kiosko, sin dependencias cruzadas)
+    function minsToStr(m) {
+      m = Math.abs(Math.round(m))
+      const h = Math.floor(m / 60), min = m % 60
+      if (h > 0 && min > 0) return `${h}h ${min}min`
+      if (h > 0)             return `${h}h`
+      return `${min}min`
+    }
+
     ;(async () => {
       const ctx = await initPage()
       if (!ctx) return
@@ -246,11 +374,16 @@
       clockRecord = clock
       updateClockUI()
 
+      const isAdmin = profile.role === 'admin'
       await Promise.all([
         loadStats(profile),
         loadTodayShift(profile),
-        loadRequests(profile)
+        loadRequests(profile),
+        isAdmin ? loadTeamStatus(profile) : Promise.resolve()
       ])
+
+      // Auto-refresh del estado del equipo cada 60 segundos (solo admin)
+      if (isAdmin) setInterval(() => loadTeamStatus(profile), 60000)
     })()
   </script>
 </body>
