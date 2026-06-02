@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Días Libres — First Patagonia HR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="menu-toggle" id="menuToggle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-title">
+          <h2>Días Libres</h2>
+          <p>Solicitudes de vacaciones y permisos</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn--primary btn--sm" onclick="openRequestModal()" id="newRequestBtn">
+            + Nueva solicitud
+          </button>
+        </div>
+      </header>
+
+      <main class="content">
+        <!-- Admin: pendientes destacados -->
+        <div id="adminPendingSection" class="hidden">
+          <div class="page-header">
+            <div>
+              <h1>Solicitudes pendientes</h1>
+              <p id="pendingCount"></p>
+            </div>
+          </div>
+          <div class="card mb-3" id="pendingCard">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Empleado</th>
+                    <th>Tipo</th>
+                    <th>Desde</th>
+                    <th>Hasta</th>
+                    <th>Días</th>
+                    <th>Motivo</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="pendingTable">
+                  <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── CALENDARIO MENSUAL (solo empleados) ── -->
+        <div id="calendarSection" class="hidden mb-3">
+          <div class="card">
+            <div class="card-header">
+              <div class="flex-center gap-2">
+                <button class="btn btn--ghost btn--sm" onclick="changeMonth(-1)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <span class="card-title" id="calMonthLabel" style="min-width:160px;text-align:center"></span>
+                <button class="btn btn--ghost btn--sm" onclick="changeMonth(1)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              </div>
+              <!-- Leyenda -->
+              <div class="flex-center gap-2" style="font-size:.75rem;flex-wrap:wrap">
+                <span style="display:inline-flex;align-items:center;gap:.35rem"><span style="width:12px;height:12px;border-radius:3px;background:#dcfce7;border:1px solid #16a34a;display:inline-block"></span>Día libre</span>
+                <span style="display:inline-flex;align-items:center;gap:.35rem"><span style="width:12px;height:12px;border-radius:3px;background:#fef9c3;border:1px solid #ca8a04;display:inline-block"></span>Vacaciones aprobadas</span>
+                <span style="display:inline-flex;align-items:center;gap:.35rem"><span style="width:12px;height:12px;border-radius:3px;background:rgba(0,184,169,.12);border:1px solid var(--teal);display:inline-block"></span>Día de trabajo</span>
+              </div>
+            </div>
+            <div class="card-body" style="padding:1rem">
+              <!-- Cabecera días semana -->
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">
+                <div style="text-align:center;font-size:.68rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);padding:.3rem 0">Lun</div>
+                <div style="text-align:center;font-size:.68rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);padding:.3rem 0">Mar</div>
+                <div style="text-align:center;font-size:.68rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);padding:.3rem 0">Mié</div>
+                <div style="text-align:center;font-size:.68rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);padding:.3rem 0">Jue</div>
+                <div style="text-align:center;font-size:.68rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);padding:.3rem 0">Vie</div>
+                <div style="text-align:center;font-size:.68rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);padding:.3rem 0">Sáb</div>
+                <div style="text-align:center;font-size:.68rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);padding:.3rem 0">Dom</div>
+              </div>
+              <!-- Días del mes -->
+              <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px"></div>
+              <!-- Nota días sin asignar -->
+              <div style="margin-top:.75rem;font-size:.75rem;color:var(--t2);text-align:center">
+                Los días en blanco aún no tienen horario asignado por el administrador
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Historial / todas -->
+        <div class="page-header" id="historyHeader">
+          <div>
+            <h1 id="historyTitle">Mis solicitudes</h1>
+          </div>
+        </div>
+
+        <div class="filter-tabs" id="filterTabs">
+          <button class="filter-tab active" data-status="all" onclick="setFilter('all', this)">Todas</button>
+          <button class="filter-tab" data-status="pendiente" onclick="setFilter('pendiente', this)">Pendientes</button>
+          <button class="filter-tab" data-status="aprobado" onclick="setFilter('aprobado', this)">Aprobadas</button>
+          <button class="filter-tab dl-admin-only" data-status="rechazado" onclick="setFilter('rechazado', this)" style="display:none">Rechazadas</button>
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th id="empColHeader" class="hidden">Empleado</th>
+                  <th>Tipo</th>
+                  <th>Desde</th>
+                  <th>Hasta</th>
+                  <th>Días</th>
+                  <th>Estado</th>
+                  <th>Solicitado</th>
+                </tr>
+              </thead>
+              <tbody id="requestsTable">
+                <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal nueva solicitud -->
+  <div class="modal-overlay" id="requestModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Nueva solicitud de días libres</span>
+        <button class="btn btn--ghost btn--sm" onclick="closeRequestModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Tipo de solicitud</label>
+          <select id="reqType">
+            <option value="vacaciones">Vacaciones</option>
+            <option value="licencia_medica">Licencia médica</option>
+            <option value="permiso_administrativo">Permiso administrativo</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fecha inicio</label>
+            <input type="date" id="reqStart">
+          </div>
+          <div class="form-group">
+            <label>Fecha fin</label>
+            <input type="date" id="reqEnd">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Motivo (opcional)</label>
+          <textarea id="reqReason" placeholder="Describe brevemente el motivo de la solicitud..."></textarea>
+        </div>
+        <div id="daysPreview" class="text-muted text-sm" style="text-align:right"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--secondary" onclick="closeRequestModal()">Cancelar</button>
+        <button class="btn btn--primary" onclick="submitRequest()">Enviar solicitud</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal aprobar/rechazar (admin) -->
+  <div class="modal-overlay" id="reviewModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Revisar solicitud</span>
+        <button class="btn btn--ghost btn--sm" onclick="closeReviewModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="reviewInfo" style="margin-bottom:1.2rem;padding:1rem;background:var(--bg);border-radius:var(--r)"></div>
+        <div class="form-group">
+          <label>Notas del administrador (opcional)</label>
+          <textarea id="adminNotes" placeholder="Comentario para el empleado..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--secondary" onclick="closeReviewModal()">Cancelar</button>
+        <button class="btn btn--danger" onclick="reviewRequest('rechazado')">Rechazar</button>
+        <button class="btn btn--success" onclick="reviewRequest('aprobado')">Aprobar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/client.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    let profile = null
+    let currentFilter = 'all'
+    let reviewingId = null
+    let calYear  = new Date().getFullYear()
+    let calMonth = new Date().getMonth()   // 0-based
+
+    // ── Calendario mensual ─────────────────────────────────────
+    function changeMonth(dir) {
+      calMonth += dir
+      if (calMonth > 11) { calMonth = 0; calYear++ }
+      if (calMonth < 0)  { calMonth = 11; calYear-- }
+      loadCalendar()
+    }
+
+    async function loadCalendar() {
+      const firstDay = new Date(calYear, calMonth, 1)
+      const lastDay  = new Date(calYear, calMonth + 1, 0)
+      const firstStr = firstDay.toISOString().split('T')[0]
+      const lastStr  = lastDay.toISOString().split('T')[0]
+
+      // Label mes
+      document.getElementById('calMonthLabel').textContent =
+        firstDay.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
+          .replace(/^\w/, c => c.toUpperCase())
+
+      // Datos en paralelo
+      const [{ data: scheds }, { data: requests }] = await Promise.all([
+        sb.from('schedules').select('date, day_type, shift_start, shift_end')
+          .eq('employee_id', profile.id)
+          .gte('date', firstStr).lte('date', lastStr),
+        sb.from('time_off_requests').select('start_date, end_date')
+          .eq('employee_id', profile.id).eq('status', 'aprobado')
+          .lte('start_date', lastStr).gte('end_date', firstStr)
+      ])
+
+      // Mapas
+      const schedMap = {}
+      ;(scheds || []).forEach(s => schedMap[s.date] = s)
+
+      // Expand approved requests to individual days
+      const vacaDays = new Set()
+      ;(requests || []).forEach(r => {
+        const s = new Date(r.start_date + 'T12:00:00')
+        const e = new Date(r.end_date   + 'T12:00:00')
+        for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+          vacaDays.add(d.toISOString().split('T')[0])
+        }
+      })
+
+      renderCalendar(firstDay, lastDay, schedMap, vacaDays)
+    }
+
+    function renderCalendar(firstDay, lastDay, schedMap, vacaDays) {
+      const grid = document.getElementById('calGrid')
+      const todayStr = today()
+      const cells = []
+
+      // Blank cells before first day (Monday = 0)
+      let startDow = firstDay.getDay()
+      startDow = startDow === 0 ? 6 : startDow - 1
+      for (let i = 0; i < startDow; i++) cells.push('<div></div>')
+
+      // Days of month
+      for (let d = 1; d <= lastDay.getDate(); d++) {
+        const dateStr = `${calYear}-${String(calMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+        const sched   = schedMap[dateStr]
+        const isVaca  = vacaDays.has(dateStr)
+        const isToday = dateStr === todayStr
+
+        let bg = 'transparent'
+        let border = '1px solid transparent'
+        let label = ''
+        let numColor = 'rgba(0,0,0,.25)'  // gris claro = sin asignar
+
+        if (isVaca) {
+          bg = '#fef9c3'; border = '1px solid #ca8a04'; numColor = '#92400e'
+          label = '<div style="font-size:.6rem;color:#92400e;font-weight:500;margin-top:.15rem">Vacac.</div>'
+        } else if (sched?.day_type === 'libre') {
+          bg = '#dcfce7'; border = '1px solid #16a34a'; numColor = '#15803d'
+          label = '<div style="font-size:.6rem;color:#15803d;font-weight:500;margin-top:.15rem">Libre</div>'
+        } else if (sched?.day_type === 'turno' && sched.shift_start) {
+          bg = 'rgba(0,184,169,.07)'; border = '1px solid var(--teal)'; numColor = 'var(--t1)'
+          label = `<div style="font-size:.58rem;color:var(--teal);font-weight:500;margin-top:.15rem">${sched.shift_start.slice(0,5)}–${sched.shift_end.slice(0,5)}</div>`
+        }
+
+        if (isToday) { border = '2px solid var(--orange)'; numColor = 'var(--orange)' }
+
+        cells.push(`
+          <div style="background:${bg};border:${border};border-radius:6px;padding:.4rem .3rem;text-align:center;min-height:50px">
+            <div style="font-size:.85rem;font-weight:${isToday?'600':'400'};color:${numColor}">${d}</div>
+            ${label}
+          </div>
+        `)
+      }
+
+      grid.innerHTML = cells.join('')
+    }
+
+    function setFilter(status, el) {
+      currentFilter = status
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'))
+      el.classList.add('active')
+      loadRequests()
+    }
+
+    function openRequestModal() {
+      const today = new Date().toISOString().split('T')[0]
+      document.getElementById('reqStart').value = today
+      document.getElementById('reqEnd').value = today
+      document.getElementById('reqReason').value = ''
+      document.getElementById('daysPreview').textContent = '1 día'
+      document.getElementById('requestModal').classList.add('open')
+    }
+
+    function closeRequestModal() { document.getElementById('requestModal').classList.remove('open') }
+    function closeReviewModal() { document.getElementById('reviewModal').classList.remove('open') }
+
+    function calcDays(start, end) {
+      if (!start || !end) return 0
+      const s = new Date(start + 'T12:00:00')
+      const e = new Date(end + 'T12:00:00')
+      return Math.max(0, Math.round((e - s) / 86400000) + 1)
+    }
+
+    // Live days preview
+    ;['reqStart', 'reqEnd'].forEach(id => {
+      document.getElementById(id)?.addEventListener('change', () => {
+        const s = document.getElementById('reqStart').value
+        const e = document.getElementById('reqEnd').value
+        const d = calcDays(s, e)
+        document.getElementById('daysPreview').textContent = d > 0 ? `${d} día${d > 1 ? 's' : ''}` : ''
+      })
+    })
+
+    async function submitRequest() {
+      const start = document.getElementById('reqStart').value
+      const end   = document.getElementById('reqEnd').value
+      const type  = document.getElementById('reqType').value
+      const reason = document.getElementById('reqReason').value
+
+      if (!start || !end) { showToast('Selecciona las fechas', 'error'); return }
+      if (end < start) { showToast('La fecha fin debe ser igual o posterior al inicio', 'error'); return }
+
+      const { data: insertData, error } = await sb.from('time_off_requests').insert({
+        employee_id: profile.id,
+        start_date: start,
+        end_date: end,
+        type,
+        reason,
+        status: 'pendiente'
+      }).select()
+
+      if (error) { showToast('Error: ' + error.message + ' | code: ' + error.code, 'error'); return }
+      showToast('Solicitud enviada ✓', 'success')
+      closeRequestModal()
+      loadRequests()
+      if (profile.role === 'admin') loadPending()
+    }
+
+    function openReviewModal(id, info) {
+      reviewingId = id
+      document.getElementById('reviewInfo').innerHTML = info
+      document.getElementById('adminNotes').value = ''
+      document.getElementById('reviewModal').classList.add('open')
+    }
+
+    async function reviewRequest(status) {
+      const { error } = await sb.from('time_off_requests').update({
+        status,
+        admin_notes: document.getElementById('adminNotes').value,
+        approved_by: profile.id,
+        approved_at: new Date().toISOString()
+      }).eq('id', reviewingId)
+
+      if (error) { showToast('Error al actualizar', 'error'); return }
+      showToast(status === 'aprobado' ? 'Solicitud aprobada ✓' : 'Solicitud rechazada', status === 'aprobado' ? 'success' : 'warning')
+      closeReviewModal()
+      loadRequests()
+      loadPending()
+    }
+
+    async function loadPending() {
+      const { data, count } = await sb.from('time_off_requests')
+        .select('*, profiles!employee_id(full_name)', { count: 'exact' })
+        .eq('status', 'pendiente')
+        .order('created_at')
+
+      document.getElementById('pendingCount').textContent =
+        count ? `${count} solicitud${count > 1 ? 'es' : ''} esperando revisión` : 'Sin solicitudes pendientes'
+
+      const tbody = document.getElementById('pendingTable')
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--t2)">No hay solicitudes pendientes</td></tr>'
+        return
+      }
+
+      tbody.innerHTML = data.map(r => {
+        const days = calcDays(r.start_date, r.end_date)
+        const info = `
+          <strong>${r.profiles?.full_name}</strong><br>
+          ${typeLabel(r.type)} · ${formatDate(r.start_date)} al ${formatDate(r.end_date)} (${days} día${days > 1 ? 's' : ''})<br>
+          ${r.reason ? `<em>${r.reason}</em>` : ''}
+        `
+        return `
+          <tr>
+            <td><strong>${r.profiles?.full_name || '—'}</strong></td>
+            <td>${typeLabel(r.type)}</td>
+            <td>${formatDate(r.start_date)}</td>
+            <td>${formatDate(r.end_date)}</td>
+            <td>${days}</td>
+            <td>${r.reason || '<span class="text-muted">—</span>'}</td>
+            <td>
+              <div class="flex-center gap-1">
+                <button class="btn btn--success btn--sm" onclick='openReviewModal("${r.id}", \`${info.replace(/`/g, "'")}\`)'>Aprobar</button>
+                <button class="btn btn--danger btn--sm" onclick='openReviewModal("${r.id}", \`${info.replace(/`/g, "'")}\`)'>Rechazar</button>
+              </div>
+            </td>
+          </tr>
+        `
+      }).join('')
+    }
+
+    async function loadRequests() {
+      const isAdmin = profile.role === 'admin'
+      let q = sb.from('time_off_requests')
+        .select('*, profiles!employee_id(full_name)')
+        .order('created_at', { ascending: false })
+
+      if (!isAdmin) {
+        q = q.eq('employee_id', profile.id)
+        if (currentFilter === 'all') q = q.neq('status', 'rechazado')
+        else q = q.eq('status', currentFilter)
+      } else {
+        if (currentFilter !== 'all') q = q.eq('status', currentFilter)
+      }
+
+      const { data } = await q
+      const tbody = document.getElementById('requestsTable')
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${isAdmin ? 7 : 6}" style="text-align:center;padding:2.5rem;color:var(--t2)">Sin solicitudes</td></tr>`
+        return
+      }
+
+      tbody.innerHTML = data.map(r => {
+        const days = calcDays(r.start_date, r.end_date)
+        return `
+          <tr>
+            ${isAdmin ? `<td><strong>${r.profiles?.full_name || '—'}</strong></td>` : ''}
+            <td>${typeLabel(r.type)}</td>
+            <td>${formatDate(r.start_date)}</td>
+            <td>${formatDate(r.end_date)}</td>
+            <td>${days}</td>
+            <td>${statusBadge(r.status)}</td>
+            <td class="text-muted text-sm">${formatDate(r.created_at?.split('T')[0])}</td>
+          </tr>
+        `
+      }).join('')
+    }
+
+    ;(async () => {
+      const ctx = await initPage()
+      if (!ctx) return
+      profile = ctx.profile
+
+      const isAdmin = profile.role === 'admin'
+
+      if (isAdmin) {
+        document.getElementById('adminPendingSection').classList.remove('hidden')
+        document.getElementById('historyTitle').textContent = 'Todas las solicitudes'
+        document.getElementById('empColHeader').classList.remove('hidden')
+        document.getElementById('newRequestBtn').style.display = 'none'
+        document.querySelector('.dl-admin-only').style.display = 'inline-flex'
+        loadPending()
+      } else {
+        // Mostrar calendario solo para empleados
+        document.getElementById('calendarSection').classList.remove('hidden')
+        loadCalendar()
+      }
+
+      loadRequests()
+    })()
+  </script>
+</body>
+</html>

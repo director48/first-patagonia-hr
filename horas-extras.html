@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Horas Extras — First Patagonia HR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="menu-toggle" id="menuToggle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-title">
+          <h2>Horas Extras</h2>
+          <p>Registro y aprobación de horas adicionales</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn--primary btn--sm" onclick="openLogModal()" id="newLogBtn">
+            + Registrar HH.EE.
+          </button>
+        </div>
+      </header>
+
+      <main class="content">
+        <!-- Stats mensuales -->
+        <div class="stats-grid mb-3" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--orange">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statTotal">—</div>
+              <div class="stat-label">Enviadas este mes</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statApproved">—</div>
+              <div class="stat-label">Aprobadas</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statPending">—</div>
+              <div class="stat-label">Pendientes</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin: pendientes -->
+        <div id="adminPendingSection" class="hidden mb-3">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Pendientes de aprobación</span>
+              <span class="text-muted text-sm" id="pendingCountLabel"></span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Empleado</th>
+                    <th>Fecha</th>
+                    <th>Horas</th>
+                    <th>Motivo</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="pendingTable">
+                  <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Historial -->
+        <div class="page-header">
+          <div><h1 id="historyTitle">Mi historial</h1></div>
+        </div>
+
+        <div class="filter-tabs" id="heFilterTabs">
+          <button class="filter-tab active" onclick="setFilter('all', this)">Todas</button>
+          <button class="filter-tab" onclick="setFilter('pendiente', this)">Pendientes</button>
+          <button class="filter-tab" onclick="setFilter('aprobado', this)">Aprobadas</button>
+          <button class="filter-tab admin-only" onclick="setFilter('rechazado', this)" style="display:none">Rechazadas</button>
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th id="empCol" class="hidden">Empleado</th>
+                  <th>Fecha</th>
+                  <th>Horas</th>
+                  <th>Motivo</th>
+                  <th>Estado</th>
+                  <th>Registrado</th>
+                </tr>
+              </thead>
+              <tbody id="otTable">
+                <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal registrar HH.EE. -->
+  <div class="modal-overlay" id="logModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Registrar horas extras</span>
+        <button class="btn btn--ghost btn--sm" onclick="closeLogModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fecha</label>
+            <input type="date" id="otDate">
+          </div>
+          <div class="form-group">
+            <label>Horas extras</label>
+            <input type="number" id="otHours" min="0.5" max="12" step="0.5" placeholder="ej. 2.5">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Motivo</label>
+          <textarea id="otReason" placeholder="Describe el trabajo realizado fuera del horario normal..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--secondary" onclick="closeLogModal()">Cancelar</button>
+        <button class="btn btn--primary" onclick="submitOT()">Enviar para aprobación</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal aprobar/rechazar (admin) -->
+  <div class="modal-overlay" id="reviewModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Revisar horas extras</span>
+        <button class="btn btn--ghost btn--sm" onclick="closeReviewModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="reviewInfo" style="margin-bottom:1.2rem;padding:1rem;background:var(--bg);border-radius:var(--r)"></div>
+        <div class="form-group">
+          <label>Notas (opcional)</label>
+          <textarea id="adminNotes" placeholder="Comentario para el empleado..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--secondary" onclick="closeReviewModal()">Cancelar</button>
+        <button class="btn btn--danger" onclick="reviewOT('rechazado')">Rechazar</button>
+        <button class="btn btn--success" onclick="reviewOT('aprobado')">Aprobar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/client.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    let profile = null
+    let currentFilter = 'all'
+    let reviewingId = null
+
+    function setFilter(status, el) {
+      currentFilter = status
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'))
+      el.classList.add('active')
+      loadHistory()
+    }
+
+    function openLogModal() {
+      document.getElementById('otDate').value = today()
+      document.getElementById('otHours').value = ''
+      document.getElementById('otReason').value = ''
+      document.getElementById('logModal').classList.add('open')
+    }
+
+    function closeLogModal()   { document.getElementById('logModal').classList.remove('open') }
+    function closeReviewModal(){ document.getElementById('reviewModal').classList.remove('open') }
+
+    async function submitOT() {
+      const date   = document.getElementById('otDate').value
+      const hours  = parseFloat(document.getElementById('otHours').value)
+      const reason = document.getElementById('otReason').value
+
+      if (!date) { showToast('Selecciona una fecha', 'error'); return }
+      if (!hours || hours <= 0 || hours > 12) { showToast('Ingresa entre 0.5 y 12 horas', 'error'); return }
+      if (!reason.trim()) { showToast('Indica el motivo', 'error'); return }
+
+      const { error } = await sb.from('overtime_records').insert({
+        employee_id: profile.id, date, hours, reason
+      })
+
+      if (error) { showToast('Error al registrar', 'error'); return }
+      showToast('Horas extras enviadas para aprobación ✓', 'success')
+      closeLogModal()
+      loadStats()
+      loadHistory()
+      if (profile.role === 'admin') loadPending()
+    }
+
+    function openReviewModal(id, info) {
+      reviewingId = id
+      document.getElementById('reviewInfo').innerHTML = info
+      document.getElementById('adminNotes').value = ''
+      document.getElementById('reviewModal').classList.add('open')
+    }
+
+    async function reviewOT(status) {
+      const { error } = await sb.from('overtime_records').update({
+        status,
+        admin_notes: document.getElementById('adminNotes').value,
+        approved_by: profile.id,
+        approved_at: new Date().toISOString()
+      }).eq('id', reviewingId)
+
+      if (error) { showToast('Error al actualizar', 'error'); return }
+      showToast(status === 'aprobado' ? 'Aprobado ✓' : 'Rechazado', status === 'aprobado' ? 'success' : 'warning')
+      closeReviewModal()
+      loadStats()
+      loadHistory()
+      loadPending()
+    }
+
+    async function loadStats() {
+      const isAdmin = profile.role === 'admin'
+      const firstOfMonth = today().slice(0, 7) + '-01'
+
+      let q = sb.from('overtime_records').select('hours, status').gte('date', firstOfMonth)
+      if (!isAdmin) q = q.eq('employee_id', profile.id)
+
+      const { data } = await q
+      const records = data || []
+
+      const total    = records.reduce((s, r) => s + Number(r.hours), 0)
+      const approved = records.filter(r => r.status === 'aprobado').reduce((s, r) => s + Number(r.hours), 0)
+      const pending  = records.filter(r => r.status === 'pendiente').length
+
+      document.getElementById('statTotal').textContent    = total.toFixed(1) + 'h'
+      document.getElementById('statApproved').textContent = approved.toFixed(1) + 'h'
+      document.getElementById('statPending').textContent  = pending
+    }
+
+    async function loadPending() {
+      const { data, count } = await sb.from('overtime_records')
+        .select('*, profiles!employee_id(full_name)', { count: 'exact' })
+        .eq('status', 'pendiente')
+        .order('date', { ascending: false })
+
+      document.getElementById('pendingCountLabel').textContent =
+        count ? `${count} pendiente${count > 1 ? 's' : ''}` : 'Sin pendientes'
+
+      const tbody = document.getElementById('pendingTable')
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--t2)">Sin solicitudes pendientes</td></tr>'
+        return
+      }
+
+      tbody.innerHTML = data.map(r => {
+        const info = `<strong>${r.profiles?.full_name}</strong> — ${formatDate(r.date)}<br>${r.hours}h · <em>${r.reason}</em>`
+        return `
+          <tr>
+            <td><strong>${r.profiles?.full_name || '—'}</strong></td>
+            <td>${formatDate(r.date)}</td>
+            <td><strong>${r.hours}h</strong></td>
+            <td>${r.reason || '<span class="text-muted">—</span>'}</td>
+            <td>
+              <div class="flex-center gap-1">
+                <button class="btn btn--success btn--sm" onclick='openReviewModal("${r.id}", \`${info.replace(/`/g,"'")}\`)'>Aprobar</button>
+                <button class="btn btn--danger btn--sm" onclick='openReviewModal("${r.id}", \`${info.replace(/`/g,"'")}\`)'>Rechazar</button>
+              </div>
+            </td>
+          </tr>
+        `
+      }).join('')
+    }
+
+    async function loadHistory() {
+      const isAdmin = profile.role === 'admin'
+      let q = sb.from('overtime_records')
+        .select('*, profiles!employee_id(full_name)')
+        .order('date', { ascending: false })
+
+      if (!isAdmin) {
+        q = q.eq('employee_id', profile.id)
+        // Empleados no ven rechazadas
+        if (currentFilter === 'all') q = q.neq('status', 'rechazado')
+        else q = q.eq('status', currentFilter)
+      } else {
+        if (currentFilter !== 'all') q = q.eq('status', currentFilter)
+      }
+
+      const { data } = await q
+      const tbody = document.getElementById('otTable')
+      const cols = isAdmin ? 6 : 5
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${cols}" style="text-align:center;padding:2.5rem;color:var(--t2)">Sin registros</td></tr>`
+        return
+      }
+
+      tbody.innerHTML = data.map(r => `
+        <tr>
+          ${isAdmin ? `<td><strong>${r.profiles?.full_name || '—'}</strong></td>` : ''}
+          <td>${formatDate(r.date)}</td>
+          <td><strong>${r.hours}h</strong></td>
+          <td>${r.reason || '<span class="text-muted">—</span>'}</td>
+          <td>${statusBadge(r.status)}</td>
+          <td class="text-muted text-sm">${formatDate(r.created_at?.split('T')[0])}</td>
+        </tr>
+      `).join('')
+    }
+
+    ;(async () => {
+      const ctx = await initPage()
+      if (!ctx) return
+      profile = ctx.profile
+
+      const isAdmin = profile.role === 'admin'
+      if (isAdmin) {
+        document.getElementById('adminPendingSection').classList.remove('hidden')
+        document.getElementById('historyTitle').textContent = 'Historial completo'
+        document.getElementById('empCol').classList.remove('hidden')
+        document.getElementById('newLogBtn').style.display = 'none'
+        document.querySelector('.admin-only').style.display = 'inline-flex'
+        loadPending()
+      }
+
+      loadStats()
+      loadHistory()
+    })()
+  </script>
+</body>
+</html>

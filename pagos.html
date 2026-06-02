@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pagos — First Patagonia HR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <header class="topbar">
+        <button class="menu-toggle" id="menuToggle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-title">
+          <h2 id="topbarTitle">Pagos</h2>
+          <p id="topbarSub">Remuneraciones del equipo</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn--primary btn--sm" id="newPayBtn" onclick="openPayModal()" style="display:none">
+            + Registrar pago
+          </button>
+        </div>
+      </header>
+
+      <main class="content">
+
+        <!-- Selector de período -->
+        <div class="period-selector">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--t2)"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <select id="periodSelect" onchange="loadPayments()">
+          </select>
+        </div>
+
+        <!-- ADMIN: stats del mes -->
+        <div id="adminStats" class="stats-grid mb-3 hidden">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statPagados">—</div>
+              <div class="stat-label">Empleados pagados</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statPendientes">—</div>
+              <div class="stat-label">Sin registrar</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--teal">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statTotalNet">—</div>
+              <div class="stat-label">Total neto del mes</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ADMIN: tabla de pagos del equipo -->
+        <div id="adminSection" class="hidden">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title" id="adminTableTitle">Pagos del equipo</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Empleado</th>
+                    <th>Concepto</th>
+                    <th>Sueldo bruto</th>
+                    <th>Sueldo líquido</th>
+                    <th>Estado</th>
+                    <th>Notas</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="adminPayTable">
+                  <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- EMPLEADO: historial de pagos -->
+        <div id="empSection" class="hidden">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Mis liquidaciones</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Período</th>
+                    <th>Concepto</th>
+                    <th>Sueldo bruto</th>
+                    <th>Sueldo líquido</th>
+                    <th>Estado</th>
+                    <th>Notas</th>
+                  </tr>
+                </thead>
+                <tbody id="empPayTable">
+                  <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal registrar / editar pago -->
+  <div class="modal-overlay" id="payModal">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-header">
+        <span class="modal-title" id="payModalTitle">Registrar pago</span>
+        <button class="btn btn--ghost btn--sm" onclick="closePayModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="payId">
+        <input type="hidden" id="payEmpId">
+
+        <div class="form-group">
+          <label>Empleado</label>
+          <select id="payEmpSelect"></select>
+        </div>
+        <div class="form-group">
+          <label>Concepto</label>
+          <input type="text" id="payConcept" value="Sueldo mensual">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Sueldo bruto (CLP)</label>
+            <input type="number" id="payGross" placeholder="ej. 850000" min="0">
+          </div>
+          <div class="form-group">
+            <label>Sueldo líquido (CLP)</label>
+            <input type="number" id="payNet" placeholder="ej. 720000" min="0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Estado</label>
+            <select id="payStatus">
+              <option value="pagado">Pagado</option>
+              <option value="pendiente">Pendiente</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Notas (opcional)</label>
+          <input type="text" id="payNotes" placeholder="ej. Incluye bono temporada, descuento préstamo...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--secondary" onclick="closePayModal()">Cancelar</button>
+        <button class="btn btn--primary" onclick="savePay()">Guardar pago</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/client.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    let profile = null
+    let employees = []
+    let paymentsCache = {}
+
+    // Generar opciones de período (últimos 12 meses + próximo)
+    function buildPeriodOptions() {
+      const sel = document.getElementById('periodSelect')
+      const now = new Date()
+      for (let i = -1; i <= 11; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        const val = d.toISOString().split('T')[0]
+        const lbl = d.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
+        const opt = document.createElement('option')
+        opt.value = val
+        opt.textContent = lbl.charAt(0).toUpperCase() + lbl.slice(1)
+        if (i === 0) opt.selected = true
+        sel.appendChild(opt)
+      }
+    }
+
+    function formatCLP(n) {
+      if (!n && n !== 0) return '—'
+      return '$' + Number(n).toLocaleString('es-CL')
+    }
+
+    function getPeriod() { return document.getElementById('periodSelect').value }
+
+    async function loadPayments() {
+      const period = getPeriod()
+      // Período: primer y último día del mes
+      const start = period
+      const end = new Date(new Date(period).getFullYear(), new Date(period).getMonth() + 1, 0).toISOString().split('T')[0]
+
+      const { data } = await sb.from('payments')
+        .select('*, profiles(full_name, position)')
+        .gte('period', start).lte('period', end)
+        .order('created_at', { ascending: false })
+
+      paymentsCache = {}
+      ;(data || []).forEach(p => paymentsCache[p.employee_id] = p)
+
+      if (profile.role === 'admin') {
+        renderAdminTable(data || [])
+        renderAdminStats(data || [])
+      } else {
+        renderEmpTable(data || [])
+      }
+    }
+
+    function renderAdminStats(payments) {
+      const paid = payments.filter(p => p.status === 'pagado').length
+      const totalNet = payments.filter(p=>p.status==='pagado').reduce((s,p) => s + Number(p.net_amount), 0)
+      const pending = employees.length - paid
+      document.getElementById('statPagados').textContent = paid
+      document.getElementById('statPendientes').textContent = Math.max(0, pending)
+      document.getElementById('statTotalNet').textContent = formatCLP(totalNet)
+
+      const period = getPeriod()
+      const d = new Date(period + 'T12:00:00')
+      document.getElementById('adminTableTitle').textContent =
+        `Pagos · ${d.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}`
+    }
+
+    function renderAdminTable(payments) {
+      const tbody = document.getElementById('adminPayTable')
+      if (!employees.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--t2)">Sin empleados registrados</td></tr>'
+        return
+      }
+
+      tbody.innerHTML = employees.map(emp => {
+        const pay = paymentsCache[emp.id]
+        const initials = emp.full_name.split(' ').filter(Boolean).slice(0,2).map(n=>n[0]).join('').toUpperCase()
+        return `<tr>
+          <td>
+            <div class="flex-center gap-1">
+              <div style="width:30px;height:30px;border-radius:50%;background:${emp.role==='admin'?'var(--orange)':'var(--teal)'};display:flex;align-items:center;justify-content:center;color:white;font-size:.7rem;font-weight:600;flex-shrink:0">${initials}</div>
+              <div>
+                <div style="font-weight:500;font-size:.88rem">${emp.full_name}</div>
+                <div style="font-size:.72rem;color:var(--t2)">${emp.position||''}</div>
+              </div>
+            </div>
+          </td>
+          <td style="font-size:.84rem">${pay?.concept || '<span class="text-muted">—</span>'}</td>
+          <td><span class="amount">${pay ? formatCLP(pay.gross_amount) : '<span class="text-muted">—</span>'}</span></td>
+          <td><span class="amount" style="color:var(--green)">${pay ? formatCLP(pay.net_amount) : '<span class="text-muted">—</span>'}</span></td>
+          <td>${pay ? `<span class="badge badge--${pay.status==='pagado'?'aprobado':'pendiente'}">${pay.status==='pagado'?'Pagado':'Pendiente'}</span>` : '<span class="badge" style="background:rgba(0,0,0,.05);color:var(--t2)">Sin registrar</span>'}</td>
+          <td style="font-size:.8rem;color:var(--t2);max-width:140px">${pay?.notes||'—'}</td>
+          <td>
+            <button class="btn btn--ghost btn--sm" onclick="openPayModal('${emp.id}')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              ${pay ? 'Editar' : 'Registrar'}
+            </button>
+          </td>
+        </tr>`
+      }).join('')
+    }
+
+    function renderEmpTable(payments) {
+      const tbody = document.getElementById('empPayTable')
+      if (!payments.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2.5rem;color:var(--t2)">Sin pagos registrados para este período</td></tr>'
+        return
+      }
+      tbody.innerHTML = payments.map(p => {
+        const d = new Date(p.period + 'T12:00:00')
+        return `<tr>
+          <td style="font-weight:500">${d.toLocaleDateString('es-CL',{month:'long',year:'numeric'})}</td>
+          <td>${p.concept}</td>
+          <td>${formatCLP(p.gross_amount)}</td>
+          <td><strong style="color:var(--green)">${formatCLP(p.net_amount)}</strong></td>
+          <td><span class="badge badge--${p.status==='pagado'?'aprobado':'pendiente'}">${p.status==='pagado'?'Pagado':'Pendiente'}</span></td>
+          <td style="font-size:.82rem;color:var(--t2)">${p.notes||'—'}</td>
+        </tr>`
+      }).join('')
+    }
+
+    function openPayModal(empId) {
+      const emp = employees.find(e => e.id === (empId || ''))
+      const pay = empId ? paymentsCache[empId] : null
+      const period = getPeriod()
+
+      document.getElementById('payModalTitle').textContent = pay ? 'Editar pago' : 'Registrar pago'
+      document.getElementById('payId').value = pay?.id || ''
+      document.getElementById('payEmpId').value = empId || ''
+
+      // Populate employee select
+      const sel = document.getElementById('payEmpSelect')
+      sel.innerHTML = employees.map(e => `<option value="${e.id}" ${e.id===empId?'selected':''}>${e.full_name}</option>`).join('')
+
+      document.getElementById('payConcept').value = pay?.concept || 'Sueldo mensual'
+      document.getElementById('payGross').value = pay?.gross_amount || ''
+      document.getElementById('payNet').value = pay?.net_amount || ''
+      document.getElementById('payStatus').value = pay?.status || 'pagado'
+      document.getElementById('payNotes').value = pay?.notes || ''
+      document.getElementById('payModal').classList.add('open')
+    }
+
+    function closePayModal() { document.getElementById('payModal').classList.remove('open') }
+
+    async function savePay() {
+      const id = document.getElementById('payId').value
+      const empId = document.getElementById('payEmpSelect').value
+      const concept = document.getElementById('payConcept').value.trim()
+      const gross = parseFloat(document.getElementById('payGross').value) || 0
+      const net = parseFloat(document.getElementById('payNet').value) || 0
+      const status = document.getElementById('payStatus').value
+      const notes = document.getElementById('payNotes').value.trim()
+      const period = getPeriod()
+
+      if (!empId) { showToast('Selecciona un empleado', 'error'); return }
+      if (!concept) { showToast('Ingresa un concepto', 'error'); return }
+
+      const payload = { employee_id: empId, period, concept, gross_amount: gross, net_amount: net, status, notes, created_by: profile.id }
+
+      const { error } = id
+        ? await sb.from('payments').update(payload).eq('id', id)
+        : await sb.from('payments').upsert(payload, { onConflict: 'employee_id,period' })
+
+      if (error) { showToast('Error al guardar: ' + error.message, 'error'); return }
+      showToast('Pago guardado ✓', 'success')
+      closePayModal()
+      loadPayments()
+    }
+
+    ;(async () => {
+      const ctx = await initPage()
+      if (!ctx) return
+      profile = ctx.profile
+
+      buildPeriodOptions()
+
+      if (profile.role === 'admin') {
+        document.getElementById('topbarSub').textContent = 'Registro de remuneraciones del equipo'
+        document.getElementById('adminStats').classList.remove('hidden')
+        document.getElementById('adminSection').classList.remove('hidden')
+        document.getElementById('newPayBtn').style.display = 'inline-flex'
+        const { data } = await sb.from('profiles').select('*').order('full_name')
+        employees = data || []
+      } else {
+        document.getElementById('topbarTitle').textContent = 'Mis Pagos'
+        document.getElementById('topbarSub').textContent = 'Historial de liquidaciones'
+        document.getElementById('empSection').classList.remove('hidden')
+      }
+
+      loadPayments()
+    })()
+  </script>
+</body>
+</html>

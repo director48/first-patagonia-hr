@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Horarios — First Patagonia HR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <header class="topbar">
+        <button class="menu-toggle" id="menuToggle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-title">
+          <h2 id="topbarTitle">Horarios</h2>
+          <p id="topbarSub">Turnos semanales</p>
+        </div>
+      </header>
+
+      <main class="content">
+        <!-- Navegación semana -->
+        <div class="week-nav">
+          <button class="btn btn--secondary btn--sm" onclick="changeWeek(-1)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Anterior
+          </button>
+          <div class="week-label" id="weekLabel"></div>
+          <button class="btn btn--secondary btn--sm" onclick="changeWeek(1)">
+            Siguiente
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <button class="btn btn--ghost btn--sm" onclick="goToToday()">Hoy</button>
+        </div>
+
+        <!-- ADMIN: roster grid -->
+        <div id="rosterSection" class="hidden">
+          <div class="card mb-3">
+            <div class="roster-wrap">
+              <table class="roster-table" id="rosterTable">
+                <thead id="rosterHead"></thead>
+                <tbody id="rosterBody">
+                  <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Leyenda -->
+          <div class="flex-center gap-2" style="font-size:.78rem;color:var(--t2);margin-bottom:1.5rem">
+            <span style="display:inline-flex;align-items:center;gap:.3rem">
+              <span style="width:10px;height:10px;background:rgba(0,184,169,.2);border-radius:2px;display:inline-block"></span> Turno asignado
+            </span>
+            <span style="display:inline-flex;align-items:center;gap:.3rem">
+              <span style="width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block"></span> Fichó hoy
+            </span>
+            <span style="display:inline-flex;align-items:center;gap:.3rem">
+              <span style="border:1.5px solid var(--orange);border-radius:3px;width:10px;height:10px;display:inline-block"></span> Hoy
+            </span>
+            <span style="font-style:italic">Haz clic en cualquier celda para asignar o editar turno</span>
+          </div>
+
+          <!-- Tabla historial fichaje equipo -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Asistencia de la semana</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Empleado</th>
+                    <th>Lunes</th><th>Martes</th><th>Miércoles</th><th>Jueves</th><th>Viernes</th><th>Sáb</th><th>Dom</th>
+                    <th>Total hrs</th>
+                  </tr>
+                </thead>
+                <tbody id="attendanceTable">
+                  <tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- EMPLEADO: vista personal -->
+        <div id="empSection" class="hidden">
+          <div class="week-grid" id="weekGrid"></div>
+
+          <div class="card mt-3">
+            <div class="card-header"><span class="card-title">Mi historial de asistencia</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Fecha</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Turno asignado</th></tr>
+                </thead>
+                <tbody id="clockTable">
+                  <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal turno -->
+  <div class="modal-overlay" id="shiftModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="shiftModalTitle">Asignar turno</span>
+        <button class="btn btn--ghost btn--sm" onclick="closeShiftModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="shiftDate">
+        <input type="hidden" id="shiftEmpId">
+        <input type="hidden" id="shiftId">
+        <div class="form-group">
+          <label>Empleado</label>
+          <div id="shiftEmpName" style="font-weight:500;padding:.5rem 0;color:var(--t1)"></div>
+        </div>
+        <!-- Tipo de día -->
+        <div class="form-group">
+          <label>Tipo de día</label>
+          <div style="display:flex;gap:.5rem">
+            <button type="button" id="btnTurno" onclick="setDayType('turno')"
+              class="btn btn--primary btn--sm" style="flex:1;justify-content:center">
+              🔵 Día de trabajo
+            </button>
+            <button type="button" id="btnLibre" onclick="setDayType('libre')"
+              class="btn btn--secondary btn--sm" style="flex:1;justify-content:center">
+              🟢 Día libre
+            </button>
+          </div>
+        </div>
+        <!-- Horas (solo para turno) -->
+        <div id="shiftTimeFields">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Hora inicio</label>
+              <input type="time" id="shiftStart" value="08:00">
+            </div>
+            <div class="form-group">
+              <label>Hora fin</label>
+              <input type="time" id="shiftEnd" value="17:00">
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Notas (opcional)</label>
+          <input type="text" id="shiftNotes" placeholder="ej. Turno mañana, área restaurante...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--danger btn--sm" id="deleteShiftBtn" onclick="deleteShift()" style="margin-right:auto;display:none">Eliminar</button>
+        <button class="btn btn--secondary" onclick="closeShiftModal()">Cancelar</button>
+        <button class="btn btn--primary" onclick="saveShift()">Guardar turno</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal corregir fichaje (admin) -->
+  <div class="modal-overlay" id="clockEditModal">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-header">
+        <span class="modal-title" id="clockEditTitle">Corregir fichaje</span>
+        <button class="btn btn--ghost btn--sm" onclick="closeClockEdit()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="clockEditId">
+        <div style="background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);border-radius:6px;padding:.75rem 1rem;margin-bottom:1.2rem;font-size:.84rem;color:var(--red)">
+          ⚠ Este empleado no registró su salida. Ingresa la hora correcta de salida.
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Entrada registrada</label>
+            <input type="time" id="clockEditIn" readonly style="background:var(--bg)">
+          </div>
+          <div class="form-group">
+            <label>Hora de salida correcta</label>
+            <input type="time" id="clockEditOut">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--secondary" onclick="closeClockEdit()">Cancelar</button>
+        <button class="btn btn--primary" onclick="saveClockEdit()">Guardar corrección</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/client.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    let profile = null
+    let employees = []
+    let schedulesMap = {}  // { empId: { date: schedule } }
+    let clocksMap = {}     // { empId: { date: clock } }
+    let currentWeekBase = today()
+    const DAYS_ES = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
+
+    function changeWeek(dir) {
+      const d = new Date(currentWeekBase + 'T12:00:00')
+      d.setDate(d.getDate() + dir * 7)
+      currentWeekBase = d.toISOString().split('T')[0]
+      loadWeek()
+    }
+
+    function goToToday() { currentWeekBase = today(); loadWeek() }
+
+    async function loadWeek() {
+      const dates = getWeekDates(currentWeekBase)
+      const first = new Date(dates[0] + 'T12:00:00')
+      const last  = new Date(dates[6] + 'T12:00:00')
+      document.getElementById('weekLabel').textContent =
+        `${first.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })} — ${last.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })}`
+
+      if (profile.role === 'admin') {
+        await loadRoster(dates)
+      } else {
+        await loadEmpWeek(dates)
+      }
+    }
+
+    // ── ADMIN ROSTER ───────────────────────────────────────────
+    async function loadRoster(dates) {
+      const empIds = employees.map(e => e.id)
+
+      const [{ data: scheds }, { data: clocks }] = await Promise.all([
+        sb.from('schedules').select('*').in('employee_id', empIds).in('date', dates),
+        sb.from('clock_records').select('*').in('employee_id', empIds).in('date', dates)
+      ])
+
+      schedulesMap = {}
+      clocksMap = {}
+
+      ;(scheds || []).forEach(s => {
+        if (!schedulesMap[s.employee_id]) schedulesMap[s.employee_id] = {}
+        schedulesMap[s.employee_id][s.date] = s
+      })
+      ;(clocks || []).forEach(c => {
+        if (!clocksMap[c.employee_id]) clocksMap[c.employee_id] = {}
+        clocksMap[c.employee_id][c.date] = c
+      })
+
+      renderRosterHead(dates)
+      renderRosterBody(dates)
+      renderAttendanceTable(dates)
+    }
+
+    function renderRosterHead(dates) {
+      const todayStr = today()
+      document.getElementById('rosterHead').innerHTML = `
+        <tr>
+          <th class="emp-th">Empleado</th>
+          ${dates.map((d, i) => {
+            const dt = new Date(d + 'T12:00:00')
+            const isToday = d === todayStr
+            return `<th class="${isToday ? 'today-col' : ''}">${DAYS_ES[i]}<br><span style="font-size:.8rem;font-weight:400">${dt.getDate()}</span></th>`
+          }).join('')}
+        </tr>
+      `
+    }
+
+    function renderRosterBody(dates) {
+      const todayStr = today()
+      document.getElementById('rosterBody').innerHTML = employees.map(emp => `
+        <tr>
+          <td class="emp-td">
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <div style="width:28px;height:28px;border-radius:50%;background:${emp.role==='admin'?'var(--orange)':'var(--teal)'};display:flex;align-items:center;justify-content:center;color:white;font-size:.65rem;font-weight:600;flex-shrink:0">
+                ${emp.full_name.split(' ').filter(Boolean).slice(0,2).map(n=>n[0]).join('').toUpperCase()}
+              </div>
+              <div>
+                <div class="roster-emp-name">${emp.full_name.split(' ')[0]}</div>
+                <div class="roster-emp-pos">${emp.position || emp.department || ''}</div>
+              </div>
+            </div>
+          </td>
+          ${dates.map(d => {
+            const sched = schedulesMap[emp.id]?.[d]
+            const clock = clocksMap[emp.id]?.[d]
+            const isToday = d === todayStr
+            return `
+              <td class="${isToday ? 'today-col' : ''}" onclick="openShiftModal('${emp.id}','${emp.full_name}','${d}')"
+                style="${sched?.day_type==='libre' ? 'background:rgba(22,163,74,.07)' : ''}">
+                <div class="roster-cell-inner">
+                  ${sched?.day_type === 'libre'
+                    ? `<span style="color:#15803d;font-size:.72rem;font-weight:500">🟢 Libre</span>`
+                    : sched?.shift_start
+                    ? `<span class="roster-shift">${sched.shift_start.slice(0,5)}–${sched.shift_end.slice(0,5)}</span>`
+                    : `<span class="roster-free">+ asignar</span>`
+                  }
+                  ${clock?.clock_in ? `<span class="roster-clocked" title="Fichó ${formatTime(clock.clock_in)}"></span>` : ''}
+                </div>
+              </td>
+            `
+          }).join('')}
+        </tr>
+      `).join('')
+    }
+
+    function renderAttendanceTable(dates) {
+      const tbody = document.getElementById('attendanceTable')
+      tbody.innerHTML = employees.map(emp => {
+        let totalMins = 0
+        const cells = dates.map(d => {
+          const c = clocksMap[emp.id]?.[d]
+          if (!c?.clock_in) return '<td style="color:var(--t2);font-size:.78rem;text-align:center">—</td>'
+          const status = clockStatus(c)
+          totalMins += calcWorkedMinutes(c)
+          const inT = formatTime(c.clock_in)
+          if (status === 'missing_exit') {
+            return `<td style="font-size:.75rem;text-align:center">
+              <span style="color:var(--green)">${inT}</span>
+              <button onclick="openClockEdit('${c.id}','${c.clock_in}')" style="display:block;margin:.2rem auto 0;background:rgba(220,38,38,.1);color:var(--red);border:none;border-radius:3px;font-size:.65rem;padding:.1rem .35rem;cursor:pointer">⚠ Sin salida</button>
+            </td>`
+          }
+          if (status === 'active') {
+            return `<td style="font-size:.75rem;text-align:center"><span style="color:var(--green)">${inT}</span><br><span style="color:var(--teal);font-size:.65rem">En curso</span></td>`
+          }
+          return `<td style="font-size:.78rem;text-align:center"><span style="color:var(--green)">${inT}</span> – ${formatTime(c.clock_out)}</td>`
+        }).join('')
+        const hrs = totalMins > 0 ? `${Math.floor(totalMins/60)}h ${Math.round(totalMins%60)>0?Math.round(totalMins%60)+'m':''}` : '—'
+        return `<tr>
+          <td><strong style="font-size:.84rem">${emp.full_name}</strong></td>
+          ${cells}
+          <td><strong>${hrs}</strong></td>
+        </tr>`
+      }).join('')
+    }
+
+    // ── Corrección de fichaje (admin) ──────────────────────────
+    function openClockEdit(recordId, clockInIso) {
+      document.getElementById('clockEditId').value = recordId
+      document.getElementById('clockEditIn').value = new Date(clockInIso).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})
+      document.getElementById('clockEditOut').value = ''
+      document.getElementById('clockEditModal').classList.add('open')
+    }
+
+    function closeClockEdit() { document.getElementById('clockEditModal').classList.remove('open') }
+
+    async function saveClockEdit() {
+      const id = document.getElementById('clockEditId').value
+      const outTime = document.getElementById('clockEditOut').value
+      if (!outTime) { showToast('Ingresa la hora de salida', 'error'); return }
+
+      // Reconstruir timestamp con la fecha del registro
+      const { data: rec } = await sb.from('clock_records').select('date,clock_in').eq('id', id).single()
+      if (!rec) { showToast('Registro no encontrado', 'error'); return }
+
+      const clockOut = new Date(`${rec.date}T${outTime}:00`)
+      const clockIn  = new Date(rec.clock_in)
+      if (clockOut <= clockIn) { showToast('La salida debe ser posterior a la entrada', 'error'); return }
+
+      const { error } = await sb.from('clock_records').update({ clock_out: clockOut.toISOString() }).eq('id', id)
+      if (error) { showToast('Error al guardar', 'error'); return }
+
+      showToast('Fichaje corregido ✓', 'success')
+      closeClockEdit()
+      loadWeek()
+    }
+
+    // ── EMPLEADO VISTA PERSONAL ────────────────────────────────
+    async function loadEmpWeek(dates) {
+      const [{ data: scheds }, { data: clocks }] = await Promise.all([
+        sb.from('schedules').select('*').eq('employee_id', profile.id).in('date', dates),
+        sb.from('clock_records').select('*').eq('employee_id', profile.id).in('date', dates)
+      ])
+
+      const schedMap = {}
+      const clockMap = {}
+      ;(scheds || []).forEach(s => schedMap[s.date] = s)
+      ;(clocks || []).forEach(c => clockMap[c.date] = c)
+
+      const todayStr = today()
+      document.getElementById('weekGrid').innerHTML = dates.map((d, i) => {
+        const s = schedMap[d]; const c = clockMap[d]
+        const dt = new Date(d + 'T12:00:00')
+        return `
+          <div class="day-cell${d===todayStr?' today':''}">
+            <div class="day-name">${DAYS_ES[i]}</div>
+            <div class="day-num">${dt.getDate()}</div>
+            ${s?.day_type === 'libre'
+              ? `<div class="shift-tag" style="background:rgba(22,163,74,.15);color:#15803d">Libre</div>`
+              : s?.shift_start
+              ? `<div class="shift-tag">${s.shift_start.slice(0,5)}–${s.shift_end.slice(0,5)}</div>`
+              : '<div class="day-off">—</div>'}
+            ${c?.clock_in ? `<div class="clock-tag">↓ ${formatTime(c.clock_in)}</div>` : ''}
+            ${c?.clock_out ? `<div class="clock-tag">↑ ${formatTime(c.clock_out)}</div>` : ''}
+          </div>
+        `
+      }).join('')
+
+      const tbody = document.getElementById('clockTable')
+      tbody.innerHTML = dates.map(d => {
+        const c = clockMap[d]; const s = schedMap[d]
+        const dt = new Date(d + 'T12:00:00')
+        let worked = '—'
+        if (c?.clock_in && c?.clock_out) {
+          const mins = (new Date(c.clock_out) - new Date(c.clock_in)) / 60000
+          worked = `${Math.floor(mins/60)}h ${Math.round(mins%60)}m`
+        }
+        return `<tr>
+          <td>${dt.toLocaleDateString('es-CL',{weekday:'short',day:'2-digit',month:'short'})}</td>
+          <td>${c?.clock_in ? formatTime(c.clock_in) : '<span class="text-muted">—</span>'}</td>
+          <td>${c?.clock_out ? formatTime(c.clock_out) : '<span class="text-muted">—</span>'}</td>
+          <td>${worked}</td>
+          <td>${s ? `${s.shift_start.slice(0,5)} – ${s.shift_end.slice(0,5)}` : '<span class="text-muted">—</span>'}</td>
+        </tr>`
+      }).join('')
+    }
+
+    // ── MODAL TURNO ────────────────────────────────────────────
+    let currentDayType = 'turno'
+
+    function setDayType(type) {
+      currentDayType = type
+      const btnT = document.getElementById('btnTurno')
+      const btnL = document.getElementById('btnLibre')
+      const timeFields = document.getElementById('shiftTimeFields')
+      if (type === 'turno') {
+        btnT.className = 'btn btn--primary btn--sm'; btnT.style.flex = '1'; btnT.style.justifyContent = 'center'
+        btnL.className = 'btn btn--secondary btn--sm'; btnL.style.flex = '1'; btnL.style.justifyContent = 'center'
+        timeFields.style.display = 'block'
+      } else {
+        btnT.className = 'btn btn--secondary btn--sm'; btnT.style.flex = '1'; btnT.style.justifyContent = 'center'
+        btnL.className = 'btn btn--success btn--sm'; btnL.style.flex = '1'; btnL.style.justifyContent = 'center'
+        timeFields.style.display = 'none'
+      }
+    }
+
+    function openShiftModal(empId, empName, date) {
+      const dt = new Date(date + 'T12:00:00')
+      document.getElementById('shiftModalTitle').textContent =
+        `${dt.toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'})}`
+      document.getElementById('shiftEmpId').value = empId
+      document.getElementById('shiftDate').value = date
+      document.getElementById('shiftEmpName').textContent = empName
+
+      const sched = schedulesMap[empId]?.[date]
+      document.getElementById('shiftId').value = sched?.id || ''
+      document.getElementById('shiftStart').value = sched?.shift_start?.slice(0,5) || '08:00'
+      document.getElementById('shiftEnd').value = sched?.shift_end?.slice(0,5) || '17:00'
+      document.getElementById('shiftNotes').value = sched?.notes || ''
+      document.getElementById('deleteShiftBtn').style.display = sched ? 'inline-flex' : 'none'
+      setDayType(sched?.day_type || 'turno')
+      document.getElementById('shiftModal').classList.add('open')
+    }
+
+    function closeShiftModal() { document.getElementById('shiftModal').classList.remove('open') }
+
+    async function saveShift() {
+      const empId = document.getElementById('shiftEmpId').value
+      const date  = document.getElementById('shiftDate').value
+      const notes = document.getElementById('shiftNotes').value
+      const dayType = currentDayType
+
+      let payload = { employee_id: empId, date, notes, day_type: dayType, created_by: profile.id }
+
+      if (dayType === 'turno') {
+        const shiftStart = document.getElementById('shiftStart').value
+        const shiftEnd   = document.getElementById('shiftEnd').value
+        if (shiftStart >= shiftEnd) { showToast('La hora inicio debe ser anterior a la hora fin', 'error'); return }
+        payload.shift_start = shiftStart
+        payload.shift_end   = shiftEnd
+      } else {
+        payload.shift_start = null
+        payload.shift_end   = null
+      }
+
+      const { error } = await sb.from('schedules').upsert(payload, { onConflict: 'employee_id,date' })
+      if (error) { showToast('Error al guardar', 'error'); return }
+      showToast(dayType === 'libre' ? 'Día libre asignado ✓' : 'Turno guardado ✓', 'success')
+      closeShiftModal()
+      loadWeek()
+    }
+
+    async function deleteShift() {
+      const id = document.getElementById('shiftId').value
+      if (!id) return
+      const { error } = await sb.from('schedules').delete().eq('id', id)
+      if (error) { showToast('Error al eliminar', 'error'); return }
+      showToast('Turno eliminado', 'success')
+      closeShiftModal()
+      loadWeek()
+    }
+
+    ;(async () => {
+      const ctx = await initPage()
+      if (!ctx) return
+      profile = ctx.profile
+
+      if (profile.role === 'admin') {
+        document.getElementById('topbarTitle').textContent = 'Turnos del equipo'
+        document.getElementById('topbarSub').textContent = 'Grilla semanal de todos los empleados'
+        document.getElementById('rosterSection').classList.remove('hidden')
+        const { data } = await sb.from('profiles').select('*').order('full_name')
+        employees = data || []
+      } else {
+        document.getElementById('empSection').classList.remove('hidden')
+      }
+
+      loadWeek()
+    })()
+  </script>
+</body>
+</html>

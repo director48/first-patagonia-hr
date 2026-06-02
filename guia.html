@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guía de Uso — First Patagonia HR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --orange: #E8521A; --teal: #00B8A9; --black: #0A0A0A;
+      --bg: #F0EDE8; --card: #fff; --t1: #111; --t2: #666;
+      --border: #E2DDD6; --green: #16a34a; --amber: #d97706; --red: #dc2626;
+      --serif: 'Cormorant Garamond', serif; --sans: 'Jost', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--sans); background: var(--bg); color: var(--t1); font-size: 15px; }
+
+    /* ── HERO ── */
+    .hero {
+      background: var(--black);
+      padding: 4rem 2rem 3rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 60% 50%, rgba(232,82,26,.15) 0%, transparent 70%);
+    }
+    .hero-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--orange); display: inline-block; margin-bottom: .9rem; }
+    .hero h1 { font-family: var(--serif); font-size: clamp(2.2rem, 5vw, 3.5rem); font-weight: 400; color: white; letter-spacing: .02em; margin-bottom: .5rem; }
+    .hero p { color: rgba(255,255,255,.5); font-size: .9rem; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 2.5rem; }
+
+    /* Role toggle */
+    .role-toggle { display: inline-flex; background: rgba(255,255,255,.08); border-radius: 50px; padding: .3rem; gap: .2rem; }
+    .role-btn {
+      padding: .65rem 2rem; border-radius: 50px;
+      font-family: var(--sans); font-size: .88rem; font-weight: 500;
+      cursor: pointer; border: none; transition: all .2s; color: rgba(255,255,255,.5);
+      background: transparent; letter-spacing: .04em;
+    }
+    .role-btn.active { background: var(--orange); color: white; }
+
+    /* ── LAYOUT ── */
+    .guide-layout { display: flex; min-height: 100vh; }
+
+    .guide-nav {
+      width: 220px; flex-shrink: 0;
+      padding: 2rem 0;
+      position: sticky; top: 0; height: 100vh; overflow-y: auto;
+      background: white; border-right: 1px solid var(--border);
+    }
+
+    .guide-nav-title {
+      font-size: .68rem; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--t2); padding: 0 1.5rem 1rem;
+    }
+
+    .guide-nav a {
+      display: flex; align-items: center; gap: .65rem;
+      padding: .6rem 1.5rem;
+      font-size: .84rem; color: var(--t2);
+      text-decoration: none; border-left: 2px solid transparent;
+      transition: all .15s;
+    }
+    .guide-nav a:hover { color: var(--t1); background: var(--bg); }
+    .guide-nav a.active { color: var(--orange); border-left-color: var(--orange); background: rgba(232,82,26,.04); }
+    .guide-nav .step-num {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--bg); color: var(--t2);
+      font-size: .72rem; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      transition: all .15s;
+    }
+    .guide-nav a.active .step-num { background: var(--orange); color: white; }
+
+    .guide-content { flex: 1; }
+
+    /* ── SECTIONS ── */
+    .section {
+      padding: 4rem 3rem;
+      border-bottom: 1px solid var(--border);
+      display: none;
+    }
+    .section.visible { display: block; }
+
+    .section-header { margin-bottom: 2.5rem; }
+    .section-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--orange); color: white;
+      font-size: .9rem; font-weight: 600; margin-bottom: 1rem;
+    }
+    .section-header h2 { font-family: var(--serif); font-size: 2.2rem; font-weight: 400; margin-bottom: .4rem; }
+    .section-header p { color: var(--t2); font-size: .94rem; line-height: 1.6; max-width: 520px; }
+
+    .section-body { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
+
+    .steps { display: flex; flex-direction: column; gap: 1.2rem; }
+    .step {
+      display: flex; gap: 1rem; align-items: flex-start;
+      padding: 1rem 1.2rem; background: white;
+      border-radius: 8px; border: 1px solid var(--border);
+    }
+    .step-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: rgba(232,82,26,.1); color: var(--orange);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: .9rem; font-weight: 700;
+    }
+    .step-icon.teal { background: rgba(0,184,169,.1); color: var(--teal); }
+    .step-icon.green { background: rgba(22,163,74,.1); color: var(--green); }
+    .step h4 { font-size: .9rem; font-weight: 500; margin-bottom: .2rem; }
+    .step p { font-size: .82rem; color: var(--t2); line-height: 1.5; }
+
+    .tip {
+      margin-top: 1.5rem; padding: .9rem 1.1rem;
+      background: rgba(0,184,169,.07); border-left: 3px solid var(--teal);
+      border-radius: 0 6px 6px 0; font-size: .82rem; color: var(--t1); line-height: 1.5;
+    }
+    .tip strong { color: var(--teal); }
+
+    /* ── DEMOS ── */
+    .demo-panel {
+      background: #1a1a1a;
+      border-radius: 12px; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    }
+    .demo-bar {
+      background: #252525; padding: .6rem 1rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .demo-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .demo-url { flex: 1; background: #333; border-radius: 4px; padding: .22rem .7rem; font-size: .7rem; color: #888; font-family: monospace; }
+    .demo-body { padding: 1rem; }
+    .demo-label {
+      font-size: .68rem; letter-spacing: .12em; text-transform: uppercase;
+      color: rgba(255,255,255,.35); margin-bottom: .75rem; text-align: center;
+    }
+
+    /* Mini app inside demo */
+    .mini-sidebar {
+      position: absolute; left: 0; top: 0; bottom: 0; width: 50px;
+      background: #0D0D0D; display: flex; flex-direction: column; align-items: center;
+      padding: .75rem 0; gap: .5rem;
+    }
+    .mini-logo { width: 28px; height: 28px; background: var(--orange); border-radius: 6px; }
+    .mini-nav-dot { width: 28px; height: 28px; border-radius: 6px; background: rgba(255,255,255,.06); cursor: pointer; }
+    .mini-nav-dot.active { background: rgba(232,82,26,.2); }
+    .mini-main { margin-left: 50px; padding: .75rem; }
+
+    /* Clock demo */
+    .clock-demo {
+      background: white; border-radius: 8px; padding: 1rem;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; margin-bottom: .75rem;
+    }
+    .clock-demo-time { font-family: var(--serif); font-size: 1.8rem; font-weight: 300; color: #111; }
+    .clock-demo-sub { font-size: .7rem; color: #888; margin-top: .2rem; }
+    .clock-demo-status { display: flex; align-items: center; gap: .4rem; font-size: .72rem; color: #888; margin-top: .5rem; }
+    .cdot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; }
+    .cdot.in { background: var(--green); }
+    .btn-demo {
+      padding: .55rem 1.1rem; border-radius: 6px;
+      font-family: var(--sans); font-size: .78rem; font-weight: 500;
+      cursor: pointer; border: none; white-space: nowrap;
+      transition: all .2s; flex-shrink: 0;
+    }
+    .btn-demo.primary { background: var(--orange); color: white; }
+    .btn-demo.danger { background: var(--red); color: white; }
+    .btn-demo.done { background: #e5e5e5; color: #888; cursor: default; }
+
+    /* Mini stats */
+    .mini-stats { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-bottom: .75rem; }
+    .mini-stat {
+      background: white; border-radius: 6px; padding: .7rem .8rem;
+      display: flex; align-items: center; gap: .6rem;
+    }
+    .mini-stat-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: .8rem; }
+    .mini-stat-val { font-size: 1.1rem; font-weight: 600; }
+    .mini-stat-lbl { font-size: .6rem; color: #888; text-transform: uppercase; letter-spacing: .06em; }
+
+    /* Week demo */
+    .week-demo { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+    .wday {
+      background: white; border-radius: 5px; padding: .5rem .3rem;
+      text-align: center; cursor: pointer; border: 2px solid transparent;
+      transition: border-color .15s;
+    }
+    .wday:hover { border-color: var(--teal); }
+    .wday.today { border-color: var(--orange); }
+    .wday.selected { border-color: var(--teal); background: rgba(0,184,169,.05); }
+    .wday-name { font-size: .55rem; color: #888; text-transform: uppercase; margin-bottom: .15rem; }
+    .wday-num { font-size: .95rem; font-weight: 400; margin-bottom: .3rem; }
+    .wday.today .wday-num { color: var(--orange); }
+    .wshift { background: rgba(0,184,169,.15); color: var(--teal); font-size: .55rem; padding: .1rem .3rem; border-radius: 3px; margin-bottom: .15rem; }
+    .woff { font-size: .6rem; color: #ccc; font-style: italic; }
+
+    /* Shift tooltip */
+    .shift-tip {
+      background: white; border-radius: 6px; padding: .6rem .8rem;
+      margin-top: .5rem; font-size: .75rem; display: none;
+      border: 1px solid var(--border);
+    }
+    .shift-tip.show { display: block; }
+    .shift-tip strong { color: var(--teal); }
+
+    /* Table demo */
+    .table-demo { background: white; border-radius: 8px; overflow: hidden; }
+    .td-header {
+      display: grid; padding: .5rem .75rem;
+      background: #FAFAF9; border-bottom: 1px solid var(--border);
+      font-size: .65rem; font-weight: 500; letter-spacing: .06em;
+      text-transform: uppercase; color: #888;
+    }
+    .td-row {
+      display: grid; padding: .6rem .75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .73rem; align-items: center;
+      transition: background .1s;
+    }
+    .td-row:last-child { border-bottom: none; }
+    .td-row:hover { background: #FAFAF9; }
+    .badge-sm {
+      display: inline-block; padding: .15rem .55rem;
+      border-radius: 999px; font-size: .65rem; font-weight: 500;
+    }
+    .badge-pend { background: rgba(217,119,6,.1); color: var(--amber); }
+    .badge-ok   { background: rgba(22,163,74,.1);  color: var(--green); }
+    .badge-rej  { background: rgba(220,38,38,.1);  color: var(--red); }
+
+    /* Action buttons in demo */
+    .act-btns { display: flex; gap: .3rem; }
+    .act-btn {
+      padding: .2rem .55rem; border-radius: 4px;
+      font-size: .65rem; font-weight: 500; cursor: pointer; border: none;
+      transition: all .15s;
+    }
+    .act-btn.ok { background: rgba(22,163,74,.1); color: var(--green); }
+    .act-btn.ok:hover { background: var(--green); color: white; }
+    .act-btn.rej { background: rgba(220,38,38,.1); color: var(--red); }
+    .act-btn.rej:hover { background: var(--red); color: white; }
+
+    /* Form demo */
+    .form-demo { background: white; border-radius: 8px; padding: .9rem; }
+    .fd-label { font-size: .65rem; font-weight: 500; text-transform: uppercase; letter-spacing: .07em; color: #888; margin-bottom: .3rem; }
+    .fd-input {
+      width: 100%; padding: .45rem .7rem;
+      border: 1.5px solid var(--border); border-radius: 5px;
+      font-family: var(--sans); font-size: .8rem; color: var(--t1);
+      margin-bottom: .7rem; outline: none;
+      transition: border-color .2s;
+    }
+    .fd-input:focus { border-color: var(--orange); }
+    .fd-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .fd-preview { text-align: right; font-size: .72rem; color: var(--teal); margin-top: -.4rem; margin-bottom: .7rem; }
+
+    /* Employee list demo */
+    .emp-item {
+      display: flex; align-items: center; gap: .7rem;
+      padding: .55rem .75rem; background: white; border-radius: 6px;
+      margin-bottom: .35rem;
+    }
+    .emp-av {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-size: .7rem; font-weight: 600; flex-shrink: 0;
+    }
+    .emp-name { font-size: .8rem; font-weight: 500; }
+    .emp-pos { font-size: .68rem; color: #888; }
+    .emp-role { margin-left: auto; font-size: .65rem; padding: .12rem .5rem; border-radius: 999px; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .section-body { grid-template-columns: 1fr; }
+      .guide-nav { display: none; }
+    }
+    @media (max-width: 640px) {
+      .section { padding: 2.5rem 1.25rem; }
+      .hero { padding: 2.5rem 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div style="position:relative">
+    <div class="hero-dot"></div>
+    <h1>First Patagonia HR</h1>
+    <p>Guía de uso del sistema</p>
+    <div class="role-toggle">
+      <button class="role-btn active" id="btnAdmin" onclick="setRole('admin')">Administrador</button>
+      <button class="role-btn" id="btnEmp"   onclick="setRole('empleado')">Empleado</button>
+    </div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="guide-layout">
+
+  <!-- Side nav -->
+  <nav class="guide-nav" id="guideNav"></nav>
+
+  <!-- Content -->
+  <div class="guide-content" id="guideContent"></div>
+</div>
+
+
+<script>
+// ── DATA ────────────────────────────────────────────────────
+const SECTIONS = {
+  admin: [
+    {
+      id: 'a-dashboard',
+      title: 'Dashboard',
+      subtitle: 'La primera pantalla al entrar. Muestra el estado del equipo en tiempo real.',
+      steps: [
+        { icon: '1', label: 'Reloj en vivo', text: 'Siempre ves la hora actual. Tú también puedes registrar tu propia entrada y salida desde aquí.' },
+        { icon: '2', c: 'teal', label: 'Estadísticas del equipo', text: 'Días libres disponibles, horas extras del mes, solicitudes pendientes y total de empleados activos.' },
+        { icon: '3', c: 'green', label: 'Solicitudes pendientes', text: 'La tarjeta inferior derecha muestra qué solicitudes de días libres esperan tu aprobación. Clic en "Revisar solicitudes" para gestionarlas.' },
+      ],
+      tip: '<strong>Consejo:</strong> El número en "Solicitudes pend." aumenta cada vez que un empleado envía una solicitud. Es tu indicador de trabajo pendiente.',
+      demo: 'dashboard-admin'
+    },
+    {
+      id: 'a-horarios',
+      title: 'Horarios',
+      subtitle: 'Asigna turnos a cada empleado semana a semana. Los empleados ven automáticamente sus turnos asignados.',
+      steps: [
+        { icon: '1', label: 'Selecciona el empleado', text: 'Usa el selector "Empleado" en la barra superior para ver y editar los turnos de cualquier persona del equipo.' },
+        { icon: '2', c: 'teal', label: 'Haz clic en un día', text: 'Cada celda del calendario es clickeable. Al hacer clic se abre un modal con hora inicio, hora fin y notas opcionales.' },
+        { icon: '3', c: 'green', label: 'Guarda el turno', text: 'El turno aparece inmediatamente en el calendario y en el dashboard del empleado. Para eliminar un turno, abre el modal y usa "Eliminar turno".' },
+      ],
+      tip: '<strong>Tip:</strong> Las celdas con fondo naranja son el día de hoy. Las celdas con borde teal se están editando actualmente.',
+      demo: 'horarios-admin'
+    },
+    {
+      id: 'a-diaslibres',
+      title: 'Días Libres',
+      subtitle: 'Gestiona todas las solicitudes de vacaciones, licencias médicas y permisos del equipo.',
+      steps: [
+        { icon: '1', label: 'Sección "Pendientes"', text: 'Al entrar ves todas las solicitudes que esperan tu revisión, con nombre del empleado, fechas, cantidad de días y motivo.' },
+        { icon: '2', c: 'teal', label: 'Aprobar o rechazar', text: 'Los botones verde/rojo de cada fila abren un modal donde puedes agregar una nota opcional antes de decidir.' },
+        { icon: '3', c: 'green', label: 'Historial completo', text: 'Bajo los pendientes tienes el historial de todas las solicitudes. Filtra por estado: Todas / Pendientes / Aprobadas / Rechazadas.' },
+      ],
+      tip: '<strong>Importante:</strong> El empleado ve el estado de su solicitud en tiempo real — no necesitas avisarle manualmente.',
+      demo: 'diaslibres-admin'
+    },
+    {
+      id: 'a-extras',
+      title: 'Horas Extras',
+      subtitle: 'Revisa y aprueba las horas adicionales que reporta el equipo.',
+      steps: [
+        { icon: '1', label: 'Panel de pendientes', text: 'Igual que días libres: ves quién reportó horas extras, en qué fecha, cuántas horas y el motivo.' },
+        { icon: '2', c: 'teal', label: 'Aprobación', text: 'Aprueba con un clic. Las horas aprobadas se suman al contador mensual visible en el dashboard del empleado.' },
+        { icon: '3', c: 'green', label: 'Estadísticas mensuales', text: 'Arriba de la página ves el total de horas extras del mes, cuántas están aprobadas y cuántas pendientes.' },
+      ],
+      tip: '<strong>Nota:</strong> Solo las horas extras <em>aprobadas</em> cuentan en las estadísticas del dashboard.',
+      demo: 'extras-admin'
+    },
+    {
+      id: 'a-empleados',
+      title: 'Empleados',
+      subtitle: 'Agrega nuevos colaboradores al sistema y actualiza sus datos en cualquier momento.',
+      steps: [
+        { icon: '1', label: 'Agregar empleado', text: 'Clic en "+ Agregar empleado". Llena nombre, correo, contraseña temporal, cargo, área y días de vacaciones anuales.' },
+        { icon: '2', c: 'teal', label: 'Roles del sistema', text: '"Empleado" solo ve sus propios datos. "Administrador" tiene acceso completo. Puedes cambiar el rol en cualquier momento editando el perfil.' },
+        { icon: '3', c: 'green', label: 'Editar perfil', text: 'Clic en el botón "Editar" de cualquier fila para actualizar cargo, área, teléfono o días de vacaciones disponibles.' },
+      ],
+      tip: '<strong>Contraseña temporal:</strong> Comparte la contraseña con el empleado por WhatsApp o en persona. Ellos pueden cambiarla desde Supabase si la olvidan.',
+      demo: 'empleados-admin'
+    },
+  ],
+
+  empleado: [
+    {
+      id: 'e-dashboard',
+      title: 'Dashboard',
+      subtitle: 'Tu pantalla principal. Lo primero que ves al entrar cada día.',
+      steps: [
+        { icon: '1', label: 'Registra tu entrada', text: 'Al llegar al trabajo presiona el botón naranja "Registrar Entrada". Queda guardado con la hora exacta.' },
+        { icon: '2', c: 'teal', label: 'Registra tu salida', text: 'Al terminar tu jornada, el mismo botón cambia a "Registrar Salida" (rojo). Presiónalo antes de irte.' },
+        { icon: '3', c: 'green', label: 'Tus estadísticas', text: 'Ves cuántos días libres tienes disponibles, cuántas horas extras tienes aprobadas este mes y tus solicitudes pendientes.' },
+      ],
+      tip: '<strong>Importante:</strong> Solo puedes fichar una vez por día. Si te olvidaste de registrar la salida, avisa a tu administrador.',
+      demo: 'dashboard-emp'
+    },
+    {
+      id: 'e-horarios',
+      title: 'Horarios',
+      subtitle: 'Consulta tu turno de la semana actual o semanas futuras.',
+      steps: [
+        { icon: '1', label: 'Vista semanal', text: 'Ves los 7 días de la semana con tu turno asignado en cada uno. Las celdas en teal tienen turno asignado.' },
+        { icon: '2', c: 'teal', label: 'Navegar semanas', text: 'Usa las flechas ← → para ver semanas anteriores o futuras. El botón "Hoy" vuelve a la semana actual.' },
+        { icon: '3', c: 'green', label: 'Historial de asistencia', text: 'Bajo el calendario hay una tabla con tu registro de entradas y salidas de cada día, y las horas trabajadas.' },
+      ],
+      tip: '<strong>Nota:</strong> Si un día no tiene turno asignado, aparece como "libre". Consúltale a tu jefe si crees que hay un error.',
+      demo: 'horarios-emp'
+    },
+    {
+      id: 'e-diaslibres',
+      title: 'Días Libres',
+      subtitle: 'Solicita vacaciones, licencias médicas o permisos. El administrador los revisa y te notifica.',
+      steps: [
+        { icon: '1', label: 'Nueva solicitud', text: 'Clic en "+ Nueva solicitud". Elige el tipo (Vacaciones, Licencia médica, Permiso administrativo u Otro).' },
+        { icon: '2', c: 'teal', label: 'Elige las fechas', text: 'Selecciona fecha de inicio y fecha de fin. El sistema te muestra automáticamente cuántos días son.' },
+        { icon: '3', c: 'green', label: 'Sigue el estado', text: 'Tu solicitud aparece como "Pendiente" hasta que el administrador la revise. Puedes ver si fue Aprobada o Rechazada en tu historial.' },
+      ],
+      tip: '<strong>Consejo:</strong> Agrega siempre un motivo aunque no sea obligatorio — ayuda a que el administrador apruebe más rápido.',
+      demo: 'diaslibres-emp'
+    },
+    {
+      id: 'e-extras',
+      title: 'Horas Extras',
+      subtitle: 'Reporta horas adicionales trabajadas fuera de tu turno asignado.',
+      steps: [
+        { icon: '1', label: 'Registrar horas extras', text: 'Clic en "+ Registrar HH.EE.". Ingresa la fecha, cuántas horas trabajaste (ej. 2.5) y el motivo.' },
+        { icon: '2', c: 'teal', label: 'Aprobación pendiente', text: 'Las horas extras quedan como "Pendiente" hasta que el administrador las revise. Solo las aprobadas cuentan.' },
+        { icon: '3', c: 'green', label: 'Historial mensual', text: 'Arriba ves el total de horas extras del mes, cuántas están aprobadas y cuántas esperan revisión.' },
+      ],
+      tip: '<strong>Regla:</strong> Reporta las horas extras el mismo día o al día siguiente, mientras recuerdas bien el motivo.',
+      demo: 'extras-emp'
+    },
+  ]
+}
+
+// ── RENDER ───────────────────────────────────────────────────
+let currentRole = 'admin'
+
+function setRole(role) {
+  currentRole = role
+  document.getElementById('btnAdmin').classList.toggle('active', role === 'admin')
+  document.getElementById('btnEmp').classList.toggle('active', role === 'empleado')
+  renderNav()
+  renderContent()
+  window.scrollTo(0, 0)
+}
+
+function renderNav() {
+  const sections = SECTIONS[currentRole]
+  document.getElementById('guideNav').innerHTML = `
+    <div class="guide-nav-title">Secciones</div>
+    ${sections.map((s, i) => `
+      <a href="#${s.id}" id="nav-${s.id}">
+        <span class="step-num">${i + 1}</span>
+        ${s.title}
+      </a>
+    `).join('')}
+    <div style="padding:1.5rem 1.5rem .5rem;border-top:1px solid var(--border);margin-top:1rem">
+      <a href="login.html" style="border:none;color:var(--orange);font-size:.82rem;font-weight:500;padding:0">
+        → Abrir el sistema
+      </a>
+    </div>
+  `
+  // Intersection observer for active nav
+  setTimeout(() => {
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          document.querySelectorAll('.guide-nav a[id^="nav-"]').forEach(a => a.classList.remove('active'))
+          const navLink = document.getElementById('nav-' + e.target.id)
+          if (navLink) navLink.classList.add('active')
+        }
+      })
+    }, { threshold: 0.5 })
+    document.querySelectorAll('.section.visible').forEach(s => observer.observe(s))
+  }, 100)
+}
+
+function renderContent() {
+  const sections = SECTIONS[currentRole]
+  document.getElementById('guideContent').innerHTML = sections.map((s, i) => `
+    <section class="section visible" id="${s.id}">
+      <div class="section-header">
+        <div class="section-num">${i + 1}</div>
+        <h2>${s.title}</h2>
+        <p>${s.subtitle}</p>
+      </div>
+      <div class="section-body">
+        <div>
+          <div class="steps">
+            ${s.steps.map(st => `
+              <div class="step">
+                <div class="step-icon ${st.c || ''}">${st.icon}</div>
+                <div>
+                  <h4>${st.label}</h4>
+                  <p>${st.text}</p>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="tip">${s.tip}</div>
+        </div>
+        <div>
+          ${buildDemo(s.demo)}
+        </div>
+      </div>
+    </section>
+  `).join('')
+  initDemos()
+}
+
+// ── DEMOS ────────────────────────────────────────────────────
+function buildDemo(id) {
+  const wrap = (url, inner) => `
+    <div class="demo-panel">
+      <div class="demo-bar">
+        <div class="demo-dot" style="background:#ff5f57"></div>
+        <div class="demo-dot" style="background:#febc2e"></div>
+        <div class="demo-dot" style="background:#28c840"></div>
+        <div class="demo-url">firstpatagonia.vercel.app/${url}</div>
+      </div>
+      <div class="demo-body">
+        <div class="demo-label">Demo interactiva — prueba los elementos</div>
+        ${inner}
+      </div>
+    </div>
+  `
+
+  const demos = {
+    'dashboard-admin': wrap('dashboard.html', `
+      <div id="clock-demo-widget" style="background:white;border-radius:8px;padding:1rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.75rem">
+        <div>
+          <div class="clock-demo-time" id="live-clock">--:--:--</div>
+          <div class="clock-demo-sub">jueves 29 de mayo</div>
+          <div class="clock-demo-status">
+            <div class="cdot" id="admin-cdot"></div>
+            <span id="admin-clock-txt">Sin fichar hoy</span>
+          </div>
+        </div>
+        <button class="btn-demo primary" id="admin-clock-btn" onclick="demoClockAdmin()">Registrar Entrada</button>
+      </div>
+      <div class="mini-stats">
+        <div class="mini-stat"><div class="mini-stat-icon" style="background:rgba(0,184,169,.1);color:var(--teal)">🏖</div><div><div class="mini-stat-val">15</div><div class="mini-stat-lbl">Días libres</div></div></div>
+        <div class="mini-stat"><div class="mini-stat-icon" style="background:rgba(232,82,26,.1);color:var(--orange)">⏱</div><div><div class="mini-stat-val">4.5h</div><div class="mini-stat-lbl">HH.EE. mes</div></div></div>
+        <div class="mini-stat"><div class="mini-stat-icon" style="background:rgba(217,119,6,.1);color:var(--amber)">⚠</div><div><div class="mini-stat-val">3</div><div class="mini-stat-lbl">Pendientes</div></div></div>
+        <div class="mini-stat"><div class="mini-stat-icon" style="background:rgba(22,163,74,.1);color:var(--green)">👥</div><div><div class="mini-stat-val">18</div><div class="mini-stat-lbl">Empleados</div></div></div>
+      </div>
+    `),
+
+    'horarios-admin': wrap('horarios.html', `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+        <div style="font-size:.68rem;color:rgba(255,255,255,.4)">← 26 May – 1 Jun →</div>
+        <div style="font-size:.68rem;padding:.2rem .6rem;background:rgba(255,255,255,.08);border-radius:4px;color:rgba(255,255,255,.5)">Juan Pérez ▼</div>
+      </div>
+      <div class="week-demo" id="week-demo">
+        ${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map((d,i) => `
+          <div class="wday${i===3?' today':''}" onclick="selectDay(this,${i})">
+            <div class="wday-name">${d}</div>
+            <div class="wday-num">${26+i}</div>
+            ${i<5 && i!==2 ? '<div class="wshift">8–17</div>' : '<div class="woff">libre</div>'}
+          </div>
+        `).join('')}
+      </div>
+      <div class="shift-tip" id="shift-tip">
+        <strong>Turno asignado:</strong> 08:00 – 17:00<br>
+        <span style="color:#888;font-size:.7rem">Haz clic para editar este turno</span>
+      </div>
+    `),
+
+    'diaslibres-admin': wrap('dias-libres.html', `
+      <div style="font-size:.7rem;font-weight:500;color:rgba(255,255,255,.5);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.07em">Pendientes de aprobación</div>
+      <div class="table-demo">
+        <div class="td-header" style="grid-template-columns:1fr .8fr .8fr auto">
+          <span>Empleado</span><span>Tipo</span><span>Fechas</span><span>Acción</span>
+        </div>
+        <div class="td-row" style="grid-template-columns:1fr .8fr .8fr auto" id="row1">
+          <strong style="font-size:.75rem">Ana González</strong>
+          <span>Vacaciones</span>
+          <span style="color:#888">2–6 jun</span>
+          <div class="act-btns">
+            <button class="act-btn ok"  onclick="demoApprove('row1','aprobado')">✓</button>
+            <button class="act-btn rej" onclick="demoApprove('row1','rechazado')">✕</button>
+          </div>
+        </div>
+        <div class="td-row" style="grid-template-columns:1fr .8fr .8fr auto" id="row2">
+          <strong style="font-size:.75rem">Carlos Vera</strong>
+          <span>Permiso</span>
+          <span style="color:#888">30 may</span>
+          <div class="act-btns">
+            <button class="act-btn ok"  onclick="demoApprove('row2','aprobado')">✓</button>
+            <button class="act-btn rej" onclick="demoApprove('row2','rechazado')">✕</button>
+          </div>
+        </div>
+      </div>
+    `),
+
+    'extras-admin': wrap('horas-extras.html', `
+      <div class="mini-stats" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="mini-stat"><div class="mini-stat-icon" style="background:rgba(232,82,26,.1);color:var(--orange)">⏱</div><div><div class="mini-stat-val">12h</div><div class="mini-stat-lbl">Total mes</div></div></div>
+        <div class="mini-stat"><div class="mini-stat-icon" style="background:rgba(22,163,74,.1);color:var(--green)">✓</div><div><div class="mini-stat-val">8h</div><div class="mini-stat-lbl">Aprobadas</div></div></div>
+        <div class="mini-stat"><div class="mini-stat-icon" style="background:rgba(217,119,6,.1);color:var(--amber)">⏳</div><div><div class="mini-stat-val">2</div><div class="mini-stat-lbl">Pendientes</div></div></div>
+      </div>
+      <div class="table-demo" style="margin-top:.5rem">
+        <div class="td-header" style="grid-template-columns:.9fr .5fr .5fr auto">
+          <span>Empleado</span><span>Fecha</span><span>Horas</span><span>Acción</span>
+        </div>
+        <div class="td-row" style="grid-template-columns:.9fr .5fr .5fr auto" id="ot-row1">
+          <strong style="font-size:.75rem">María Rojas</strong>
+          <span style="color:#888">27 may</span>
+          <strong>3h</strong>
+          <div class="act-btns">
+            <button class="act-btn ok"  onclick="demoApprove('ot-row1','aprobado')">✓</button>
+            <button class="act-btn rej" onclick="demoApprove('ot-row1','rechazado')">✕</button>
+          </div>
+        </div>
+        <div class="td-row" style="grid-template-columns:.9fr .5fr .5fr auto" id="ot-row2">
+          <strong style="font-size:.75rem">Pedro Díaz</strong>
+          <span style="color:#888">28 may</span>
+          <strong>1.5h</strong>
+          <div class="act-btns">
+            <button class="act-btn ok"  onclick="demoApprove('ot-row2','aprobado')">✓</button>
+            <button class="act-btn rej" onclick="demoApprove('ot-row2','rechazado')">✕</button>
+          </div>
+        </div>
+      </div>
+    `),
+
+    'empleados-admin': wrap('empleados.html', `
+      <div id="emp-list">
+        ${[
+          { n:'Franz Schirmer', p:'Director General', c:var_orange, r:'Admin', i:'FS' },
+          { n:'Ana González',   p:'Guía de montaña', c:'#00B8A9',   r:'Emp',  i:'AG' },
+          { n:'Carlos Vera',    p:'Chef restaurante', c:'#00B8A9',  r:'Emp',  i:'CV' },
+          { n:'María Rojas',    p:'Recepción', c:'#00B8A9',          r:'Emp',  i:'MR' },
+        ].map(e => `
+          <div class="emp-item">
+            <div class="emp-av" style="background:${e.c}">${e.i}</div>
+            <div><div class="emp-name">${e.n}</div><div class="emp-pos">${e.p}</div></div>
+            <span class="emp-role badge-sm ${e.r==='Admin'?'badge-ok':'badge-pend'}">${e.r}</span>
+          </div>
+        `).join('')}
+      </div>
+    `),
+
+    'dashboard-emp': wrap('dashboard.html', `
+      <div style="background:white;border-radius:8px;padding:1rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.75rem">
+        <div>
+          <div class="clock-demo-time" id="emp-clock">--:--:--</div>
+          <div class="clock-demo-sub">jueves 29 de mayo</div>
+          <div class="clock-demo-status">
+            <div class="cdot" id="emp-cdot"></div>
+            <span id="emp-clock-txt">Sin fichar hoy</span>
+          </div>
+        </div>
+        <button class="btn-demo primary" id="emp-clock-btn" onclick="demoClockEmp()">Registrar Entrada</button>
+      </div>
+      <div class="mini-stats">
+        <div class="mini-stat"><div class="mini-stat-icon" style="background:rgba(0,184,169,.1);color:var(--teal)">🏖</div><div><div class="mini-stat-val">15</div><div class="mini-stat-lbl">Días libres</div></div></div>
+        <div class="mini-stat"><div class="mini-stat-icon" style="background:rgba(232,82,26,.1);color:var(--orange)">⏱</div><div><div class="mini-stat-val">0h</div><div class="mini-stat-lbl">HH.EE.</div></div></div>
+        <div class="mini-stat"><div class="mini-stat-icon" style="background:rgba(22,163,74,.1);color:var(--green)">📅</div><div><div class="mini-stat-val">08:00</div><div class="mini-stat-lbl">Turno hoy</div></div></div>
+        <div class="mini-stat"><div class="mini-stat-icon" style="background:rgba(217,119,6,.1);color:var(--amber)">📋</div><div><div class="mini-stat-val">1</div><div class="mini-stat-lbl">Pendiente</div></div></div>
+      </div>
+    `),
+
+    'horarios-emp': wrap('horarios.html', `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+        <button style="background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.5);padding:.3rem .6rem;border-radius:4px;cursor:pointer;font-size:.7rem">← Anterior</button>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.6);font-weight:500">26 May – 1 Jun 2025</div>
+        <button style="background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.5);padding:.3rem .6rem;border-radius:4px;cursor:pointer;font-size:.7rem">Siguiente →</button>
+      </div>
+      <div class="week-demo">
+        ${['L','M','X','J','V','S','D'].map((d,i) => `
+          <div class="wday${i===3?' today':''}">
+            <div class="wday-name">${d}</div>
+            <div class="wday-num">${26+i}</div>
+            ${i<5 && i!==2 ? '<div class="wshift">8–17</div>' : '<div class="woff">libre</div>'}
+          </div>
+        `).join('')}
+      </div>
+      <div style="background:white;border-radius:6px;padding:.7rem .85rem;margin-top:.5rem;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:.75rem"><strong>Hoy, jueves 29</strong> · Turno 08:00–17:00</div>
+        <div style="font-size:.68rem;color:var(--green)">● Presente</div>
+      </div>
+    `),
+
+    'diaslibres-emp': wrap('dias-libres.html', `
+      <div class="form-demo">
+        <div class="fd-label">Tipo de solicitud</div>
+        <select class="fd-input" id="dl-type" onchange="updateDaysPreview()">
+          <option>Vacaciones</option>
+          <option>Licencia médica</option>
+          <option>Permiso administrativo</option>
+        </select>
+        <div class="fd-row">
+          <div>
+            <div class="fd-label">Fecha inicio</div>
+            <input type="date" class="fd-input" id="dl-start" value="2025-06-02" oninput="updateDaysPreview()">
+          </div>
+          <div>
+            <div class="fd-label">Fecha fin</div>
+            <input type="date" class="fd-input" id="dl-end" value="2025-06-06" oninput="updateDaysPreview()">
+          </div>
+        </div>
+        <div class="fd-preview" id="dl-preview">5 días</div>
+        <div class="fd-label">Motivo</div>
+        <input type="text" class="fd-input" placeholder="Ej. Vacaciones de invierno planificadas">
+        <button class="btn-demo primary" style="width:100%;justify-content:center" onclick="demoSubmitRequest()">Enviar solicitud</button>
+      </div>
+    `),
+
+    'extras-emp': wrap('horas-extras.html', `
+      <div class="form-demo">
+        <div class="fd-row">
+          <div>
+            <div class="fd-label">Fecha</div>
+            <input type="date" class="fd-input" value="2025-05-29">
+          </div>
+          <div>
+            <div class="fd-label">Horas extras</div>
+            <input type="number" class="fd-input" placeholder="ej. 2.5" min="0.5" max="12" step="0.5" id="ot-hours" oninput="updateOTPreview()">
+          </div>
+        </div>
+        <div class="fd-preview" id="ot-preview"></div>
+        <div class="fd-label">Motivo</div>
+        <input type="text" class="fd-input" placeholder="ej. Cierre de temporada, preparación evento..." style="margin-bottom:.75rem">
+        <button class="btn-demo primary" style="width:100%;justify-content:center" onclick="demoSubmitOT()">Enviar para aprobación</button>
+      </div>
+    `),
+  }
+  return demos[id] || ''
+}
+
+// ── DEMO INTERACTIONS ────────────────────────────────────────
+const var_orange = '#E8521A'
+let adminClockState = 0
+let empClockState = 0
+
+function initDemos() {
+  // Live clock
+  function tick() {
+    const t = new Date().toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit', second:'2-digit' })
+    ;['live-clock','emp-clock'].forEach(id => {
+      const el = document.getElementById(id)
+      if (el) el.textContent = t
+    })
+  }
+  setInterval(tick, 1000)
+  tick()
+}
+
+function demoClockAdmin() {
+  adminClockState = (adminClockState + 1) % 3
+  const btn = document.getElementById('admin-clock-btn')
+  const dot = document.getElementById('admin-cdot')
+  const txt = document.getElementById('admin-clock-txt')
+  if (!btn) return
+  const now = new Date().toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })
+  if (adminClockState === 1) {
+    btn.textContent = 'Registrar Salida'; btn.className = 'btn-demo danger'
+    dot.className = 'cdot in'; txt.textContent = `Entrada: ${now}`
+  } else if (adminClockState === 2) {
+    btn.textContent = 'Jornada completada'; btn.className = 'btn-demo done'
+    dot.className = 'cdot'; txt.textContent = `Jornada completada`
+  }
+}
+
+function demoClockEmp() {
+  empClockState = (empClockState + 1) % 3
+  const btn = document.getElementById('emp-clock-btn')
+  const dot = document.getElementById('emp-cdot')
+  const txt = document.getElementById('emp-clock-txt')
+  if (!btn) return
+  const now = new Date().toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })
+  if (empClockState === 1) {
+    btn.textContent = 'Registrar Salida'; btn.className = 'btn-demo danger'
+    dot.className = 'cdot in'; txt.textContent = `Entrada: ${now}`
+  } else if (empClockState === 2) {
+    btn.textContent = 'Jornada completada'; btn.className = 'btn-demo done'
+    dot.className = 'cdot'; txt.textContent = 'Jornada completada'
+  }
+}
+
+function selectDay(el, i) {
+  document.querySelectorAll('.wday').forEach(d => d.classList.remove('selected'))
+  el.classList.add('selected')
+  const tip = document.getElementById('shift-tip')
+  if (tip) {
+    if (i < 5 && i !== 2) {
+      tip.innerHTML = `<strong style="color:var(--teal)">Turno asignado:</strong> 08:00 – 17:00 &nbsp;·&nbsp; <span style="color:#888;font-size:.7rem">Haz clic para editar</span>`
+    } else {
+      tip.innerHTML = `<span style="color:#888">Día sin turno. Haz clic para asignar uno.</span>`
+    }
+    tip.classList.add('show')
+  }
+}
+
+function demoApprove(rowId, status) {
+  const row = document.getElementById(rowId)
+  if (!row) return
+  const badge = status === 'aprobado'
+    ? `<span class="badge-sm badge-ok">Aprobado ✓</span>`
+    : `<span class="badge-sm badge-rej">Rechazado</span>`
+  const last = row.lastElementChild
+  last.innerHTML = badge
+  row.style.opacity = '.6'
+}
+
+function updateDaysPreview() {
+  const s = document.getElementById('dl-start')?.value
+  const e = document.getElementById('dl-end')?.value
+  const prev = document.getElementById('dl-preview')
+  if (!s || !e || !prev) return
+  const d = Math.max(0, Math.round((new Date(e) - new Date(s)) / 86400000) + 1)
+  prev.textContent = d > 0 ? `${d} día${d > 1 ? 's' : ''}` : ''
+}
+
+function demoSubmitRequest() {
+  const btn = event.target
+  btn.textContent = 'Solicitud enviada ✓'
+  btn.style.background = '#16a34a'
+  setTimeout(() => { btn.textContent = 'Enviar solicitud'; btn.style.background = ''; }, 2500)
+}
+
+function updateOTPreview() {
+  const h = parseFloat(document.getElementById('ot-hours')?.value)
+  const p = document.getElementById('ot-preview')
+  if (p) p.textContent = h > 0 ? `${h} hora${h !== 1 ? 's' : ''} a registrar` : ''
+}
+
+function demoSubmitOT() {
+  const btn = event.target
+  btn.textContent = 'Enviado para aprobación ✓'
+  btn.style.background = '#16a34a'
+  setTimeout(() => { btn.textContent = 'Enviar para aprobación'; btn.style.background = ''; }, 2500)
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+setRole('admin')
+</script>
+</body>
+</html>

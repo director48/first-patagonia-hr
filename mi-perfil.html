@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Perfil — First Patagonia HR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <header class="topbar">
+        <button class="menu-toggle" id="menuToggle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-title">
+          <h2>Mi Perfil</h2>
+          <p id="topbarDate"></p>
+        </div>
+      </header>
+
+      <main class="content">
+
+        <!-- Hero -->
+        <div class="profile-hero">
+          <div class="profile-avatar" id="profileAvatar"></div>
+          <div style="flex:1">
+            <div class="profile-name" id="profileName"></div>
+            <div class="profile-meta">
+              <span id="profilePosition"></span>
+              <span id="profileDept"></span>
+              <span id="profilePhone"></span>
+            </div>
+          </div>
+          <!-- Estado fichaje (solo lectura) -->
+          <div style="text-align:right">
+            <div style="font-family:var(--font-serif);font-size:2rem;font-weight:300;color:white;line-height:1" id="heroTime"></div>
+            <div style="font-size:.78rem;color:rgba(255,255,255,.5);margin-top:.4rem;display:flex;align-items:center;gap:.4rem;justify-content:flex-end" id="heroStatus">
+              <span id="heroStatusDot" style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);display:inline-block;flex-shrink:0"></span>
+              <span id="heroStatusText">Cargando...</span>
+            </div>
+            <div style="font-size:.72rem;color:rgba(255,255,255,.3);margin-top:.5rem;display:flex;align-items:center;gap:.4rem;justify-content:flex-end">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Fichaje solo en terminal de entrada
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid mb-3">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--teal">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 12a11.05 11.05 0 0 0-22 0zm-5 7a3 3 0 0 1-6 0v-7"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statDias">—</div>
+              <div class="stat-label">Días libres disponibles</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--orange">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statHoras">—</div>
+              <div class="stat-label">Horas trabajadas este mes</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statUltimoPago">—</div>
+              <div class="stat-label">Último sueldo líquido</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statHE">—</div>
+              <div class="stat-label">HH.EE. aprobadas este mes</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid: horario + asistencia -->
+        <div class="grid-2 mb-3">
+
+          <!-- Turno semanal -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Mi turno esta semana</span>
+              <a href="horarios.html" class="btn btn--ghost btn--sm">Ver todo</a>
+            </div>
+            <div class="card-body" id="weekSchedule" style="padding:1rem">
+              <div style="color:var(--t2);font-size:.88rem;text-align:center;padding:1rem">Cargando...</div>
+            </div>
+          </div>
+
+          <!-- Asistencia reciente -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Asistencia reciente</span>
+              <a href="horarios.html" class="btn btn--ghost btn--sm">Ver todo</a>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Día</th><th>Entrada</th><th>Salida</th><th>Horas</th></tr></thead>
+                <tbody id="recentClock">
+                  <tr><td colspan="4" style="text-align:center;padding:1.5rem;color:var(--t2)">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid: solicitudes + pagos -->
+        <div class="grid-2">
+
+          <!-- Solicitudes rápidas -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Mis solicitudes</span>
+              <a href="dias-libres.html" class="btn btn--ghost btn--sm">Ver todo</a>
+            </div>
+            <div class="card-body">
+              <!-- Quick actions -->
+              <div class="flex-center gap-1 mb-2" style="flex-wrap:wrap">
+                <a href="dias-libres.html" class="btn btn--secondary btn--sm">
+                  🌴 Solicitar días libres
+                </a>
+                <a href="horas-extras.html" class="btn btn--secondary btn--sm">
+                  ⏱ Registrar HH.EE.
+                </a>
+              </div>
+              <div id="recentRequests">
+                <div style="color:var(--t2);font-size:.84rem;text-align:center;padding:1rem">Cargando...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Último pago -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Mis pagos recientes</span>
+              <a href="pagos.html" class="btn btn--ghost btn--sm">Ver todo</a>
+            </div>
+            <div class="card-body" id="recentPayments">
+              <div style="color:var(--t2);font-size:.84rem;text-align:center;padding:1rem">Cargando...</div>
+            </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal solicitar día libre rápido -->
+  <div class="modal-overlay" id="quickDLModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Solicitar días libres</span>
+        <button class="btn btn--ghost btn--sm" onclick="document.getElementById('quickDLModal').classList.remove('open')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Tipo</label>
+          <select id="dlType">
+            <option value="vacaciones">Vacaciones</option>
+            <option value="licencia_medica">Licencia médica</option>
+            <option value="permiso_administrativo">Permiso administrativo</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Desde</label><input type="date" id="dlStart"></div>
+          <div class="form-group"><label>Hasta</label><input type="date" id="dlEnd"></div>
+        </div>
+        <div class="form-group">
+          <label>Motivo (opcional)</label>
+          <textarea id="dlReason" placeholder="Describe brevemente..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--secondary" onclick="document.getElementById('quickDLModal').classList.remove('open')">Cancelar</button>
+        <button class="btn btn--primary" onclick="submitDL()">Enviar solicitud</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/client.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    let profile = null
+    let clockRecord = null
+    const todayStr = today()
+    const DAYS_ES = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
+
+    // Reloj en vivo
+    function tick() {
+      const t = new Date().toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })
+      const el = document.getElementById('heroTime')
+      if (el) el.textContent = t
+    }
+    setInterval(tick, 1000); tick()
+
+    document.getElementById('topbarDate').textContent =
+      new Date().toLocaleDateString('es-CL', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
+
+    // ── Estado fichaje (solo lectura, sin acción) ──────────────
+    function updateClockUI() {
+      const dot  = document.getElementById('heroStatusDot')
+      const text = document.getElementById('heroStatusText')
+      if (!clockRecord?.clock_in) {
+        dot.style.background = 'rgba(255,255,255,.2)'
+        text.textContent = 'Sin fichar hoy'
+      } else if (!clockRecord.clock_out) {
+        dot.style.background = '#22c55e'
+        text.textContent = `En turno desde ${formatTime(clockRecord.clock_in)}`
+      } else {
+        dot.style.background = 'rgba(255,255,255,.3)'
+        text.textContent = `${formatTime(clockRecord.clock_in)} → ${formatTime(clockRecord.clock_out)}`
+      }
+    }
+
+    // ── Stats ──────────────────────────────────────────────────
+    async function loadStats() {
+      const firstMonth = todayStr.slice(0,7) + '-01'
+
+      const [{ data: clocks }, { data: ot }, { data: pays }] = await Promise.all([
+        sb.from('clock_records').select('clock_in,clock_out').eq('employee_id', profile.id).gte('date', firstMonth),
+        sb.from('overtime_records').select('hours').eq('employee_id', profile.id).eq('status','aprobado').gte('date', firstMonth),
+        sb.from('payments').select('net_amount,period,status').eq('employee_id', profile.id).order('period', { ascending: false }).limit(1)
+      ])
+
+      // Horas trabajadas este mes (solo registros completos y válidos)
+      let totalMins = 0
+      ;(clocks || []).forEach(c => { totalMins += calcWorkedMinutes(c) })
+      const hrs  = Math.floor(totalMins / 60)
+      const mins = Math.round(totalMins % 60)
+      document.getElementById('statHoras').textContent =
+        hrs > 0 ? `${hrs}h ${mins > 0 ? mins + 'm' : ''}`.trim() : (mins > 0 ? `${mins}m` : '0h')
+
+      // HH.EE.
+      const he = (ot || []).reduce((s, r) => s + Number(r.hours), 0)
+      document.getElementById('statHE').textContent = he.toFixed(1) + 'h'
+
+      // Días libres
+      document.getElementById('statDias').textContent = profile.vacation_days_total ?? 15
+
+      // Último pago
+      const lastPay = pays?.[0]
+      if (lastPay) {
+        document.getElementById('statUltimoPago').textContent =
+          '$' + Number(lastPay.net_amount).toLocaleString('es-CL')
+      } else {
+        document.getElementById('statUltimoPago').textContent = '—'
+      }
+    }
+
+    // ── Turno semanal ──────────────────────────────────────────
+    async function loadWeekSchedule() {
+      const dates = getWeekDates(todayStr)
+      const { data: scheds } = await sb.from('schedules').select('*')
+        .eq('employee_id', profile.id).in('date', dates)
+      const map = {}
+      ;(scheds || []).forEach(s => map[s.date] = s)
+
+      const container = document.getElementById('weekSchedule')
+      container.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">
+          ${dates.map((d, i) => {
+            const s = map[d]
+            const dt = new Date(d + 'T12:00:00')
+            const isToday = d === todayStr
+            return `
+              <div style="text-align:center;padding:.4rem .2rem;border-radius:5px;background:${isToday?'rgba(232,82,26,.08)':'transparent'};border:${isToday?'1.5px solid var(--orange)':'1px solid var(--border)'}">
+                <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.07em;color:var(--t2)">${DAYS_ES[i]}</div>
+                <div style="font-size:1rem;font-weight:400;color:${isToday?'var(--orange)':'var(--t1)'};margin:.1rem 0">${dt.getDate()}</div>
+                ${s
+                  ? `<div style="font-size:.62rem;color:var(--teal);font-weight:500">${s.shift_start.slice(0,5)}</div><div style="font-size:.62rem;color:var(--teal)">${s.shift_end.slice(0,5)}</div>`
+                  : `<div style="font-size:.62rem;color:rgba(0,0,0,.2);font-style:italic">libre</div>`
+                }
+              </div>
+            `
+          }).join('')}
+        </div>
+      `
+    }
+
+    // ── Asistencia reciente ────────────────────────────────────
+    async function loadRecentClock() {
+      const { data } = await sb.from('clock_records').select('*')
+        .eq('employee_id', profile.id)
+        .order('date', { ascending: false }).limit(5)
+
+      const tbody = document.getElementById('recentClock')
+      if (!data?.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:1.5rem;color:var(--t2)">Sin registros</td></tr>'
+        return
+      }
+      tbody.innerHTML = data.map(c => {
+        const dt = new Date(c.date + 'T12:00:00')
+        const worked = workedLabel(c)
+        return `<tr>
+          <td style="font-size:.82rem">${dt.toLocaleDateString('es-CL',{weekday:'short',day:'2-digit',month:'short'})}</td>
+          <td style="font-size:.82rem">${c.clock_in ? formatTime(c.clock_in) : '<span class="text-muted">—</span>'}</td>
+          <td style="font-size:.82rem">${c.clock_out ? formatTime(c.clock_out) : '<span class="text-muted">—</span>'}</td>
+          <td style="font-size:.82rem">${worked}</td>
+        </tr>`
+      }).join('')
+    }
+
+    // ── Solicitudes recientes ──────────────────────────────────
+    async function loadRecentRequests() {
+      const { data } = await sb.from('time_off_requests').select('*')
+        .eq('employee_id', profile.id)
+        .order('created_at', { ascending: false }).limit(4)
+
+      const container = document.getElementById('recentRequests')
+      if (!data?.length) {
+        container.innerHTML = '<p class="text-muted text-sm" style="text-align:center">Sin solicitudes recientes</p>'
+        return
+      }
+      container.innerHTML = data.map(r => `
+        <div class="flex-between" style="padding:.5rem 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-size:.84rem;font-weight:500">${typeLabel(r.type)}</div>
+            <div style="font-size:.75rem;color:var(--t2)">${formatDate(r.start_date)} – ${formatDate(r.end_date)}</div>
+          </div>
+          ${statusBadge(r.status)}
+        </div>
+      `).join('')
+    }
+
+    // ── Pagos recientes ────────────────────────────────────────
+    async function loadRecentPayments() {
+      const { data } = await sb.from('payments').select('*')
+        .eq('employee_id', profile.id)
+        .order('period', { ascending: false }).limit(3)
+
+      const container = document.getElementById('recentPayments')
+      if (!data?.length) {
+        container.innerHTML = '<p class="text-muted text-sm" style="text-align:center;padding:1rem">Sin pagos registrados aún</p>'
+        return
+      }
+      container.innerHTML = data.map(p => {
+        const d = new Date(p.period + 'T12:00:00')
+        return `
+          <div class="flex-between" style="padding:.6rem 0;border-bottom:1px solid var(--border)">
+            <div>
+              <div style="font-size:.88rem;font-weight:500">${d.toLocaleDateString('es-CL',{month:'long',year:'numeric'})}</div>
+              <div style="font-size:.75rem;color:var(--t2)">${p.concept}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:.95rem;font-weight:600;color:var(--green)">$${Number(p.net_amount).toLocaleString('es-CL')}</div>
+              <span class="badge badge--${p.status==='pagado'?'aprobado':'pendiente'}" style="font-size:.65rem">${p.status==='pagado'?'Pagado':'Pendiente'}</span>
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+
+    async function submitDL() {
+      const start = document.getElementById('dlStart').value
+      const end   = document.getElementById('dlEnd').value
+      const type  = document.getElementById('dlType').value
+      const reason = document.getElementById('dlReason').value
+      if (!start || !end) { showToast('Selecciona las fechas', 'error'); return }
+      if (end < start) { showToast('La fecha fin debe ser igual o posterior al inicio', 'error'); return }
+      const { error } = await sb.from('time_off_requests').insert({
+        employee_id: profile.id, start_date: start, end_date: end, type, reason
+      })
+      if (error) { showToast('Error al enviar', 'error'); return }
+      showToast('Solicitud enviada ✓', 'success')
+      document.getElementById('quickDLModal').classList.remove('open')
+      loadRecentRequests()
+    }
+
+    ;(async () => {
+      const ctx = await initPage()
+      if (!ctx) return
+      profile = ctx.profile
+
+      // Render profile hero
+      const initials = profile.full_name.split(' ').filter(Boolean).slice(0,2).map(n=>n[0]).join('').toUpperCase()
+      document.getElementById('profileAvatar').textContent = initials
+      document.getElementById('profileName').textContent = profile.full_name
+
+      const metaParts = [profile.position, profile.department, profile.phone].filter(Boolean)
+      document.getElementById('profilePosition').textContent = metaParts.join(' · ')
+
+      // Today's clock
+      const { data: clock } = await sb.from('clock_records').select('*')
+        .eq('employee_id', profile.id).eq('date', todayStr).maybeSingle()
+      clockRecord = clock
+      updateClockUI()
+
+      // Load all data in parallel
+      await Promise.all([
+        loadStats(),
+        loadWeekSchedule(),
+        loadRecentClock(),
+        loadRecentRequests(),
+        loadRecentPayments()
+      ])
+    })()
+  </script>
+</body>
+</html>

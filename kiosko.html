@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Terminal de Asistencia — First Patagonia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --orange: #E8521A;
+      --teal: #00B8A9;
+      --green: #16a34a;
+      --red: #dc2626;
+      --cream: #F5F2EC;
+      --serif: 'Cormorant Garamond', serif;
+      --sans: 'Jost', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      font-family: var(--sans);
+      background: #0A0A0A;
+      color: var(--cream);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* ── FONDO ── */
+    .bg-glow {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background: radial-gradient(ellipse at 50% 110%, rgba(232,82,26,.12) 0%, transparent 60%);
+    }
+
+    /* ── RELOJ GLOBAL (siempre visible) ── */
+    .global-clock {
+      position: fixed;
+      top: 2rem; left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      z-index: 10;
+    }
+
+    .global-time {
+      font-family: var(--serif);
+      font-size: clamp(3.5rem, 8vw, 5.5rem);
+      font-weight: 300;
+      color: var(--cream);
+      letter-spacing: .04em;
+      line-height: 1;
+    }
+
+    .global-date {
+      font-size: clamp(.75rem, 1.5vw, .9rem);
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.35);
+      margin-top: .4rem;
+    }
+
+    /* ── LOGO ── */
+    .logo-area {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .logo-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--orange);
+      margin-bottom: .6rem;
+    }
+
+    .logo-name {
+      font-family: var(--serif);
+      font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+      font-weight: 400;
+      color: var(--cream);
+      letter-spacing: .04em;
+    }
+
+    .logo-sub {
+      font-size: clamp(.65rem, 1.2vw, .75rem);
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.3);
+      margin-top: .3rem;
+    }
+
+    /* ── ESTADO CONTAINER ── */
+    .state { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 460px; z-index: 1; }
+    .state.active { display: flex; animation: fadeIn .3s ease; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── INPUTS ── */
+    .field { width: 100%; margin-bottom: 1rem; }
+
+    .field label {
+      display: block;
+      font-size: .72rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.4);
+      margin-bottom: .5rem;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 1.1rem 1.3rem;
+      background: rgba(255,255,255,.06);
+      border: 1.5px solid rgba(255,255,255,.1);
+      border-radius: 10px;
+      color: var(--cream);
+      font-family: var(--sans);
+      font-size: clamp(1rem, 2vw, 1.1rem);
+      outline: none;
+      transition: border-color .2s, background .2s;
+      -webkit-appearance: none;
+    }
+
+    .field input:focus {
+      border-color: var(--orange);
+      background: rgba(255,255,255,.09);
+    }
+
+    .field input::placeholder { color: rgba(255,255,255,.2); }
+
+    /* ── BOTONES ── */
+    .btn-main {
+      width: 100%;
+      padding: 1.3rem;
+      border-radius: 12px;
+      font-family: var(--sans);
+      font-size: clamp(1rem, 2.2vw, 1.15rem);
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: none;
+      transition: all .2s;
+      margin-top: .5rem;
+    }
+
+    .btn-main:active { transform: scale(.98); }
+    .btn-main:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-entrada { background: var(--orange); color: white; }
+    .btn-entrada:hover:not(:disabled) { background: #d4481a; }
+
+    .btn-salida { background: var(--red); color: white; }
+    .btn-salida:hover:not(:disabled) { background: #b91c1c; }
+
+    .btn-acceder { background: var(--orange); color: white; }
+    .btn-acceder:hover:not(:disabled) { background: #d4481a; }
+
+    .btn-cancel {
+      background: transparent;
+      color: rgba(255,255,255,.35);
+      border: 1.5px solid rgba(255,255,255,.1);
+      margin-top: .75rem;
+      font-size: .88rem;
+      letter-spacing: .06em;
+    }
+
+    .btn-cancel:hover { border-color: rgba(255,255,255,.25); color: rgba(255,255,255,.6); }
+
+    /* ── ERROR ── */
+    .error-msg {
+      background: rgba(220,38,38,.12);
+      border: 1px solid rgba(220,38,38,.3);
+      color: #fca5a5;
+      padding: .8rem 1.1rem;
+      border-radius: 8px;
+      font-size: .85rem;
+      text-align: center;
+      width: 100%;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .error-msg.show { display: block; animation: fadeIn .2s; }
+
+    /* ── LOADING SPINNER ── */
+    .spinner {
+      width: 50px; height: 50px;
+      border: 3px solid rgba(255,255,255,.1);
+      border-top-color: var(--orange);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin-bottom: 1.5rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── ACTION STATE ── */
+    .greeting-name {
+      font-family: var(--serif);
+      font-size: clamp(2.5rem, 6vw, 3.8rem);
+      font-weight: 400;
+      color: var(--cream);
+      text-align: center;
+      line-height: 1.1;
+      margin-bottom: .5rem;
+    }
+
+    .clock-status-line {
+      font-size: clamp(.8rem, 1.6vw, .92rem);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.4);
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .clock-status-line .entrada-time {
+      color: var(--teal);
+    }
+
+    /* ── SUCCESS STATE ── */
+    .success-icon {
+      width: 90px; height: 90px;
+      border-radius: 50%;
+      background: rgba(22,163,74,.15);
+      border: 2px solid var(--green);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.5rem;
+      color: var(--green);
+      margin-bottom: 1.5rem;
+      animation: popIn .4s cubic-bezier(.34,1.56,.64,1);
+    }
+
+    @keyframes popIn { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    .success-action {
+      font-size: clamp(.7rem, 1.3vw, .78rem);
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: .5rem;
+    }
+
+    .success-time {
+      font-family: var(--serif);
+      font-size: clamp(3rem, 7vw, 5rem);
+      font-weight: 300;
+      color: var(--cream);
+      letter-spacing: .04em;
+      line-height: 1;
+      margin-bottom: .4rem;
+    }
+
+    .success-name {
+      font-size: clamp(.9rem, 1.8vw, 1.05rem);
+      color: rgba(255,255,255,.5);
+      margin-bottom: 2rem;
+    }
+
+    .countdown-bar-wrap {
+      width: 200px;
+      height: 3px;
+      background: rgba(255,255,255,.1);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .countdown-bar {
+      height: 100%;
+      background: var(--green);
+      border-radius: 99px;
+      width: 100%;
+      transition: width linear;
+    }
+
+    .countdown-txt {
+      font-size: .75rem;
+      color: rgba(255,255,255,.3);
+      letter-spacing: .1em;
+      margin-top: .75rem;
+    }
+
+    /* ── ALREADY DONE ── */
+    .done-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: .6;
+    }
+
+    .done-title {
+      font-family: var(--serif);
+      font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+      font-weight: 400;
+      color: rgba(255,255,255,.7);
+      text-align: center;
+      margin-bottom: .5rem;
+    }
+
+    .done-sub {
+      font-size: .84rem;
+      color: rgba(255,255,255,.35);
+      text-align: center;
+      letter-spacing: .04em;
+    }
+
+    .done-times {
+      display: flex; gap: 2rem; margin: 1.5rem 0;
+    }
+
+    .done-time-item { text-align: center; }
+    .done-time-label { font-size: .65rem; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.3); margin-bottom: .3rem; }
+    .done-time-val { font-family: var(--serif); font-size: 1.8rem; font-weight: 300; color: var(--teal); }
+
+    /* ── DIVISOR ── */
+    .divider {
+      width: 40px; height: 1px;
+      background: rgba(255,255,255,.1);
+      margin: 1.5rem auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <!-- Reloj global -->
+  <div class="global-clock">
+    <div class="global-time" id="globalTime">--:--</div>
+    <div class="global-date" id="globalDate"></div>
+  </div>
+
+  <!-- ─── LOGIN ─── -->
+  <div class="state active" id="state-login" style="margin-top:7rem">
+    <div class="logo-area">
+      <div class="logo-dot"></div>
+      <div class="logo-name">First Patagonia</div>
+      <div class="logo-sub">Terminal de asistencia</div>
+    </div>
+
+    <div id="loginError" class="error-msg">Correo o contraseña incorrectos. Intenta de nuevo.</div>
+
+    <div class="field">
+      <label>Correo electrónico</label>
+      <input type="email" id="inputEmail" inputmode="email" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="tu@correo.cl">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="inputPassword" autocomplete="off" placeholder="••••••••">
+    </div>
+
+    <button class="btn-main btn-acceder" id="loginBtn" onclick="doLogin()">Acceder</button>
+  </div>
+
+  <!-- ─── LOADING ─── -->
+  <div class="state" id="state-loading">
+    <div class="spinner"></div>
+    <div style="color:rgba(255,255,255,.4);font-size:.88rem;letter-spacing:.1em">Verificando...</div>
+  </div>
+
+  <!-- ─── ACTION ─── -->
+  <div class="state" id="state-action">
+    <div class="greeting-name" id="actionName"></div>
+    <div class="clock-status-line" id="actionStatus"></div>
+    <button class="btn-main" id="actionBtn" onclick="doClock()"></button>
+    <button class="btn-main btn-cancel" onclick="cancelAction()">Cancelar</button>
+  </div>
+
+  <!-- ─── SUCCESS ─── -->
+  <div class="state" id="state-success">
+    <div class="success-icon">✓</div>
+    <div class="success-action" id="successLabel"></div>
+    <div class="success-time" id="successTime"></div>
+    <div class="success-name" id="successName"></div>
+    <div class="countdown-bar-wrap">
+      <div class="countdown-bar" id="countdownBar"></div>
+    </div>
+    <div class="countdown-txt" id="countdownTxt"></div>
+  </div>
+
+  <!-- ─── JORNADA COMPLETA ─── -->
+  <div class="state" id="state-done">
+    <div class="done-icon">🌙</div>
+    <div class="done-title" id="doneTitle">Jornada completada</div>
+    <div class="done-sub" id="doneName"></div>
+    <div class="done-times">
+      <div class="done-time-item">
+        <div class="done-time-label">Entrada</div>
+        <div class="done-time-val" id="doneIn">—</div>
+      </div>
+      <div class="done-time-item">
+        <div class="done-time-label">Salida</div>
+        <div class="done-time-val" id="doneOut">—</div>
+      </div>
+    </div>
+    <div class="countdown-bar-wrap">
+      <div class="countdown-bar" id="countdownBar2"></div>
+    </div>
+    <div class="countdown-txt" id="countdownTxt2"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/client.js"></script>
+  <script>
+    let currentProfile = null
+    let clockRecord    = null
+    let countdownTimer = null
+
+    // ── Reloj en vivo ──────────────────────────────────────────
+    function tick() {
+      const now = new Date()
+      document.getElementById('globalTime').textContent =
+        now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+      document.getElementById('globalDate').textContent =
+        now.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()
+    }
+    setInterval(tick, 1000)
+    tick()
+
+    // ── Navegación entre estados ───────────────────────────────
+    function showState(id) {
+      document.querySelectorAll('.state').forEach(s => s.classList.remove('active'))
+      document.getElementById(id).classList.add('active')
+    }
+
+    // ── Login ──────────────────────────────────────────────────
+    document.getElementById('inputPassword').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doLogin()
+    })
+
+    async function doLogin() {
+      const email    = document.getElementById('inputEmail').value.trim()
+      const password = document.getElementById('inputPassword').value
+      const err      = document.getElementById('loginError')
+      const btn      = document.getElementById('loginBtn')
+
+      if (!email || !password) {
+        err.textContent = 'Ingresa tu correo y contraseña.'
+        err.classList.add('show')
+        return
+      }
+
+      err.classList.remove('show')
+      btn.disabled = true
+      showState('state-loading')
+
+      // Autenticar
+      const { data: authData, error: authError } = await sb.auth.signInWithPassword({ email, password })
+
+      if (authError) {
+        await sb.auth.signOut()
+        err.textContent = 'Correo o contraseña incorrectos. Intenta de nuevo.'
+        err.classList.add('show')
+        document.getElementById('inputPassword').value = ''
+        btn.disabled = false
+        showState('state-login')
+        return
+      }
+
+      // Obtener perfil
+      const { data: profile } = await sb.from('profiles')
+        .select('*').eq('id', authData.user.id).single()
+
+      if (!profile) {
+        await sb.auth.signOut()
+        err.textContent = 'Tu perfil no está configurado. Habla con el administrador.'
+        err.classList.add('show')
+        btn.disabled = false
+        showState('state-login')
+        return
+      }
+
+      // Obtener fichaje de hoy
+      const todayStr = new Date().toISOString().split('T')[0]
+      const { data: clock } = await sb.from('clock_records')
+        .select('*').eq('employee_id', profile.id).eq('date', todayStr).maybeSingle()
+
+      currentProfile = profile
+      clockRecord    = clock
+      btn.disabled   = false
+
+      // Decidir qué mostrar
+      if (clock?.clock_in && clock?.clock_out) {
+        showDone()
+      } else {
+        showAction()
+      }
+    }
+
+    // ── Pantalla de acción ─────────────────────────────────────
+    function showAction() {
+      const firstName = currentProfile.full_name.split(' ')[0]
+      document.getElementById('actionName').textContent = firstName
+
+      const btn = document.getElementById('actionBtn')
+
+      if (!clockRecord || !clockRecord.clock_in) {
+        document.getElementById('actionStatus').innerHTML = 'Sin registrar hoy · Turno pendiente'
+        btn.textContent  = 'Registrar Entrada'
+        btn.className    = 'btn-main btn-entrada'
+      } else {
+        const inTime   = new Date(clockRecord.clock_in).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+        const horasTranscurridas = (new Date() - new Date(clockRecord.clock_in)) / 3600000
+
+        // Bloquear salida si han pasado más de 10 horas (olvidó salir)
+        if (horasTranscurridas > 10) {
+          document.getElementById('actionStatus').innerHTML =
+            `Entrada: <span class="entrada-time">${inTime}</span>`
+          btn.textContent  = 'Contacta al administrador'
+          btn.className    = 'btn-main btn-cancel'
+          btn.disabled     = true
+          document.getElementById('actionName').insertAdjacentHTML('afterend', `
+            <div style="font-size:clamp(.75rem,1.4vw,.88rem);color:rgba(255,120,120,.9);text-align:center;margin-bottom:1.5rem;line-height:1.6;max-width:340px">
+              Han pasado más de 10 horas desde tu entrada.<br>
+              El administrador debe registrar tu salida manualmente.
+            </div>
+          `)
+        } else {
+          document.getElementById('actionStatus').innerHTML =
+            `Entrada: <span class="entrada-time">${inTime}</span>`
+          btn.textContent = 'Registrar Salida'
+          btn.className   = 'btn-main btn-salida'
+        }
+      }
+
+      showState('state-action')
+    }
+
+    // ── Fichar ─────────────────────────────────────────────────
+    async function doClock() {
+      const btn = document.getElementById('actionBtn')
+      btn.disabled = true
+      showState('state-loading')
+
+      const now      = new Date()
+      const todayStr = now.toISOString().split('T')[0]
+      let actionLabel = ''
+
+      if (!clockRecord || !clockRecord.clock_in) {
+        const { data, error } = await sb.from('clock_records').upsert({
+          employee_id: currentProfile.id,
+          date:        todayStr,
+          clock_in:    now.toISOString()
+        }, { onConflict: 'employee_id,date' }).select().single()
+
+        if (error) { btn.disabled = false; showAction(); return }
+        clockRecord = data
+        actionLabel = 'ENTRADA REGISTRADA'
+      } else {
+        const { data, error } = await sb.from('clock_records')
+          .update({ clock_out: now.toISOString() })
+          .eq('id', clockRecord.id).select().single()
+
+        if (error) { btn.disabled = false; showAction(); return }
+        clockRecord = data
+        actionLabel = 'SALIDA REGISTRADA'
+      }
+
+      // Cerrar sesión
+      await sb.auth.signOut()
+
+      // Mostrar éxito
+      const timeStr = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+      document.getElementById('successLabel').textContent = actionLabel
+      document.getElementById('successTime').textContent  = timeStr
+      document.getElementById('successName').textContent  = currentProfile.full_name
+      showState('state-success')
+      startCountdown('countdownBar', 'countdownTxt', 5, reset)
+    }
+
+    // ── Cancelar ───────────────────────────────────────────────
+    async function cancelAction() {
+      await sb.auth.signOut()
+      reset()
+    }
+
+    // ── Jornada completa ───────────────────────────────────────
+    function showDone() {
+      document.getElementById('doneName').textContent = currentProfile.full_name
+      document.getElementById('doneIn').textContent  =
+        new Date(clockRecord.clock_in).toLocaleTimeString('es-CL',  { hour:'2-digit', minute:'2-digit' })
+      document.getElementById('doneOut').textContent =
+        new Date(clockRecord.clock_out).toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })
+
+      sb.auth.signOut()
+      showState('state-done')
+      startCountdown('countdownBar2', 'countdownTxt2', 6, reset)
+    }
+
+    // ── Countdown ──────────────────────────────────────────────
+    function startCountdown(barId, txtId, seconds, cb) {
+      clearInterval(countdownTimer)
+      const bar = document.getElementById(barId)
+      const txt = document.getElementById(txtId)
+      let remaining = seconds
+      bar.style.transition = `width ${seconds}s linear`
+      bar.style.width = '100%'
+
+      txt.textContent = `Volviendo en ${remaining}...`
+
+      setTimeout(() => { bar.style.width = '0%' }, 50)
+
+      countdownTimer = setInterval(() => {
+        remaining--
+        txt.textContent = `Volviendo en ${remaining}...`
+        if (remaining <= 0) { clearInterval(countdownTimer); cb() }
+      }, 1000)
+    }
+
+    // ── Reset ──────────────────────────────────────────────────
+    function reset() {
+      clearInterval(countdownTimer)
+      currentProfile = null
+      clockRecord    = null
+      document.getElementById('inputEmail').value    = ''
+      document.getElementById('inputPassword').value = ''
+      document.getElementById('loginError').classList.remove('show')
+      document.getElementById('loginBtn').disabled   = false
+      showState('state-login')
+      setTimeout(() => document.getElementById('inputEmail').focus(), 300)
+    }
+
+    // ── Prevenir cierre accidental (modo kiosko) ───────────────
+    document.addEventListener('keydown', e => {
+      if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) e.preventDefault()
+    })
+  </script>
+</body>
+</html>

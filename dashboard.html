@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — First Patagonia HR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="menu-toggle" id="menuToggle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-title">
+          <h2 id="greeting">Dashboard</h2>
+          <p id="topbarDate"></p>
+        </div>
+      </header>
+
+      <main class="content">
+        <!-- Estado fichaje (solo lectura) -->
+        <div class="clock-widget" id="clockWidget">
+          <div class="clock-info">
+            <div class="clock-time" id="clockTime">--:--:--</div>
+            <div class="clock-date" id="clockDate"></div>
+            <div class="clock-status">
+              <div class="clock-dot" id="clockDot"></div>
+              <span id="clockStatusText">Cargando...</span>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:.78rem;color:rgba(255,255,255,.5) ;background:rgba(255,255,255,.06);border-radius:8px;padding:.75rem 1.25rem;display:flex;align-items:center;gap:.6rem">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="opacity:.6;flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span>El fichaje se realiza en el<br><strong style="color:rgba(255,255,255,.8)">terminal de la entrada del hotel</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--teal">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 12a11.05 11.05 0 0 0-22 0zm-5 7a3 3 0 0 1-6 0v-7"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statDias">—</div>
+              <div class="stat-label">Días libres disp.</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--orange">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statHE">—</div>
+              <div class="stat-label">HH.EE. este mes</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statPend">—</div>
+              <div class="stat-label">Solicitudes pend.</div>
+            </div>
+          </div>
+          <div class="stat-card hidden" id="statAdminCard">
+            <div class="stat-icon stat-icon--green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statEmp">—</div>
+              <div class="stat-label">Empleados activos</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cards bottom -->
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Turno de hoy</span>
+              <a href="horarios.html" class="btn btn--ghost btn--sm">Ver horarios</a>
+            </div>
+            <div class="card-body" id="todayShift">
+              <div class="empty-state">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:block;margin:0 auto"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <p>Sin turno asignado para hoy</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title" id="reqCardTitle">Solicitudes recientes</span>
+              <a href="dias-libres.html" class="btn btn--ghost btn--sm">Ver todo</a>
+            </div>
+            <div class="card-body" id="recentRequests">
+              <div class="empty-state">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:block;margin:0 auto"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+                <p>Sin solicitudes</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/client.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    let profile = null
+    let clockRecord = null
+    const todayStr = today()
+
+    // Reloj en vivo
+    function tick() {
+      document.getElementById('clockTime').textContent =
+        new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    }
+    setInterval(tick, 1000)
+    tick()
+
+    const now = new Date()
+    const dateStr = now.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    document.getElementById('clockDate').textContent = dateStr
+    document.getElementById('topbarDate').textContent = dateStr
+
+    // Estado fichaje (solo lectura)
+    function updateClockUI() {
+      const dot = document.getElementById('clockDot')
+      const txt = document.getElementById('clockStatusText')
+      if (!clockRecord || !clockRecord.clock_in) {
+        dot.className = 'clock-dot'
+        txt.textContent = 'Sin fichar hoy'
+      } else if (!clockRecord.clock_out) {
+        dot.className = 'clock-dot in'
+        txt.textContent = `En turno desde ${formatTime(clockRecord.clock_in)}`
+      } else {
+        dot.className = 'clock-dot out'
+        txt.textContent = `${formatTime(clockRecord.clock_in)} → ${formatTime(clockRecord.clock_out)}`
+      }
+    }
+
+    async function loadStats(p) {
+      const isAdmin = p.role === 'admin'
+      const firstOfMonth = todayStr.slice(0, 7) + '-01'
+
+      document.getElementById('statDias').textContent = p.vacation_days_total ?? 15
+
+      const { data: ot } = await sb.from('overtime_records')
+        .select('hours').eq('employee_id', p.id)
+        .eq('status', 'aprobado').gte('date', firstOfMonth)
+      // Solo horas extras aprobadas — independiente del reloj
+      document.getElementById('statHE').textContent =
+        ((ot || []).reduce((s, r) => s + Number(r.hours), 0)).toFixed(1) + 'h'
+
+      if (isAdmin) {
+        const { count: pend } = await sb.from('time_off_requests')
+          .select('*', { count: 'exact', head: true }).eq('status', 'pendiente')
+        document.getElementById('statPend').textContent = pend ?? 0
+        document.getElementById('statAdminCard').classList.remove('hidden')
+        const { count: emp } = await sb.from('profiles').select('*', { count: 'exact', head: true })
+        document.getElementById('statEmp').textContent = emp ?? 0
+      } else {
+        const { count: pend } = await sb.from('time_off_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('employee_id', p.id).eq('status', 'pendiente')
+        document.getElementById('statPend').textContent = pend ?? 0
+      }
+    }
+
+    async function loadTodayShift(p) {
+      const { data } = await sb.from('schedules').select('*')
+        .eq('employee_id', p.id).eq('date', todayStr).maybeSingle()
+
+      if (data) {
+        document.getElementById('todayShift').innerHTML = `
+          <div style="text-align:center;padding:.75rem 0">
+            <div style="font-family:var(--font-serif);font-size:2.4rem;font-weight:300;color:var(--teal);line-height:1">
+              ${data.shift_start.slice(0,5)} – ${data.shift_end.slice(0,5)}
+            </div>
+            <div class="text-muted text-sm mt-1">Turno asignado</div>
+            ${data.notes ? `<div class="text-muted text-sm mt-2" style="font-style:italic">${data.notes}</div>` : ''}
+          </div>
+        `
+      }
+    }
+
+    async function loadRequests(p) {
+      const isAdmin = p.role === 'admin'
+      if (isAdmin) document.getElementById('reqCardTitle').textContent = 'Solicitudes pendientes'
+
+      let q = sb.from('time_off_requests')
+        .select('*, profiles!employee_id(full_name)')
+        .order('created_at', { ascending: false }).limit(5)
+      if (isAdmin) q = q.eq('status', 'pendiente')
+      else q = q.eq('employee_id', p.id)
+
+      const { data } = await q
+      if (!data || data.length === 0) return
+
+      document.getElementById('recentRequests').innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:.8rem">
+          ${data.map(r => `
+            <div class="flex-between">
+              <div>
+                ${isAdmin ? `<div style="font-size:.84rem;font-weight:500">${r.profiles?.full_name || '—'}</div>` : ''}
+                <div class="text-sm text-muted">${typeLabel(r.type)} · ${formatDate(r.start_date)}</div>
+              </div>
+              ${statusBadge(r.status)}
+            </div>
+          `).join('')}
+        </div>
+        ${isAdmin ? `<div style="margin-top:1.1rem;text-align:center"><a href="dias-libres.html" class="btn btn--secondary btn--sm">Revisar solicitudes</a></div>` : ''}
+      `
+    }
+
+    ;(async () => {
+      const ctx = await initPage()
+      if (!ctx) return
+      profile = ctx.profile
+
+      const hour = now.getHours()
+      const greet = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches'
+      document.getElementById('greeting').textContent = `${greet}, ${profile.full_name.split(' ')[0]}`
+
+      const { data: clock } = await sb.from('clock_records')
+        .select('*').eq('employee_id', profile.id).eq('date', todayStr).maybeSingle()
+      clockRecord = clock
+      updateClockUI()
+
+      await Promise.all([
+        loadStats(profile),
+        loadTodayShift(profile),
+        loadRequests(profile)
+      ])
+    })()
+  </script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bienvenido/a a First Patagonia</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500;600&display=swap');
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#F0EDE8;font-family:'Jost','Helvetica Neue',Helvetica,Arial,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F0EDE8;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+
+          <!-- HEADER -->
+          <tr>
+            <td style="background-color:#0A0A0A;padding:40px 48px 36px;border-radius:12px 12px 0 0;text-align:center;">
+              <!-- Dot -->
+              <div style="width:10px;height:10px;border-radius:50%;background-color:#E8521A;display:inline-block;margin-bottom:14px;"></div>
+              <!-- Logo -->
+              <div style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:32px;font-weight:400;color:#F5F2EC;letter-spacing:0.04em;line-height:1;margin-bottom:6px;">
+                First Patagonia
+              </div>
+              <div style="font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-top:4px;">
+                Panel Interno · Hotel Petrohué
+              </div>
+            </td>
+          </tr>
+
+          <!-- HERO BAND -->
+          <tr>
+            <td style="background-color:#E8521A;padding:4px 0;"></td>
+          </tr>
+
+          <!-- BODY -->
+          <tr>
+            <td style="background-color:#FFFFFF;padding:48px 48px 40px;border-radius:0 0 12px 12px;">
+
+              <!-- Greeting -->
+              <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:38px;font-weight:400;color:#0A0A0A;line-height:1.15;margin-bottom:16px;">
+                Bienvenido/a<br>al equipo
+              </div>
+
+              <p style="font-size:15px;line-height:1.7;color:#555555;margin:0 0 28px;">
+                Tu cuenta en el panel interno de First Patagonia ha sido creada.
+                Desde aquí podrás revisar tus turnos, registrar tu asistencia,
+                solicitar días libres y mucho más — todo desde tu teléfono o computador.
+              </p>
+
+              <!-- Divider -->
+              <div style="width:40px;height:2px;background-color:#E8521A;margin-bottom:32px;"></div>
+
+              <!-- Features -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:36px;">
+                <tr>
+                  <td width="48" valign="top" style="padding-bottom:20px;">
+                    <div style="width:40px;height:40px;border-radius:10px;background-color:rgba(0,184,169,0.1);display:flex;align-items:center;justify-content:center;text-align:center;line-height:40px;font-size:18px;">📅</div>
+                  </td>
+                  <td valign="top" style="padding-bottom:20px;padding-left:14px;">
+                    <div style="font-size:14px;font-weight:600;color:#111111;margin-bottom:3px;">Horarios y turnos</div>
+                    <div style="font-size:13px;color:#777777;line-height:1.5;">Consulta tu turno semanal asignado y tu historial de asistencia.</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td width="48" valign="top" style="padding-bottom:20px;">
+                    <div style="width:40px;height:40px;border-radius:10px;background-color:rgba(232,82,26,0.1);display:flex;align-items:center;justify-content:center;text-align:center;line-height:40px;font-size:18px;">🌴</div>
+                  </td>
+                  <td valign="top" style="padding-bottom:20px;padding-left:14px;">
+                    <div style="font-size:14px;font-weight:600;color:#111111;margin-bottom:3px;">Días libres y vacaciones</div>
+                    <div style="font-size:13px;color:#777777;line-height:1.5;">Solicita permisos y vacaciones directamente desde el panel. Tu jefe los revisa en minutos.</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td width="48" valign="top">
+                    <div style="width:40px;height:40px;border-radius:10px;background-color:rgba(22,163,74,0.1);display:flex;align-items:center;justify-content:center;text-align:center;line-height:40px;font-size:18px;">⏱</div>
+                  </td>
+                  <td valign="top" style="padding-left:14px;">
+                    <div style="font-size:14px;font-weight:600;color:#111111;margin-bottom:3px;">Horas extras</div>
+                    <div style="font-size:13px;color:#777777;line-height:1.5;">Registra y da seguimiento a tus horas adicionales trabajadas.</div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;">
+                <tr>
+                  <td align="center">
+                    <a href="{{ .ConfirmationURL }}"
+                       style="display:inline-block;background-color:#E8521A;color:#ffffff;text-decoration:none;font-family:'Jost','Helvetica Neue',sans-serif;font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:16px 40px;border-radius:8px;">
+                      Activar mi cuenta
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Note -->
+              <div style="background-color:#F8F6F2;border-radius:8px;padding:16px 20px;margin-bottom:8px;">
+                <p style="font-size:12px;color:#888888;margin:0;line-height:1.6;">
+                  Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+                  <span style="color:#E8521A;word-break:break-all;">{{ .ConfirmationURL }}</span>
+                </p>
+              </div>
+
+              <p style="font-size:12px;color:#AAAAAA;margin:16px 0 0;line-height:1.6;">
+                Si no reconoces esta invitación, puedes ignorar este correo con total tranquilidad.
+              </p>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="padding:28px 0 8px;text-align:center;">
+              <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;font-weight:400;color:#0A0A0A;letter-spacing:0.04em;margin-bottom:10px;">
+                First Patagonia
+              </div>
+              <div style="font-size:11px;color:#999999;line-height:1.8;letter-spacing:0.03em;">
+                Ruta 225 Km 58, Petrohué · Parque Nacional Vicente Pérez Rosales<br>
+                <a href="mailto:reservas@petrohue.com" style="color:#E8521A;text-decoration:none;">reservas@petrohue.com</a>
+                &nbsp;·&nbsp;
+                <a href="https://wa.me/56984644870" style="color:#E8521A;text-decoration:none;">+56 9 8464 4870</a>
+              </div>
+              <div style="margin-top:16px;font-size:10px;color:#CCCCCC;letter-spacing:0.1em;text-transform:uppercase;">
+                Panel Interno — Uso exclusivo del equipo
+              </div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

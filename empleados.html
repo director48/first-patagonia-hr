@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Empleados — First Patagonia HR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="menu-toggle" id="menuToggle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-title">
+          <h2>Empleados</h2>
+          <p>Gestión del equipo First Patagonia</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn--primary btn--sm" onclick="openNewModal()">
+            + Agregar empleado
+          </button>
+        </div>
+      </header>
+
+      <main class="content">
+        <div class="page-header">
+          <div>
+            <h1>Equipo</h1>
+            <p id="empCount" class="text-muted"></p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Empleado</th>
+                  <th>Cargo</th>
+                  <th>Área</th>
+                  <th>Rol</th>
+                  <th>Días libres</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="empTable">
+                <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal crear/editar empleado -->
+  <div class="modal-overlay" id="empModal">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle">Agregar empleado</span>
+        <button class="btn btn--ghost btn--sm" onclick="closeModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editId">
+
+        <!-- Sección solo para crear -->
+        <div id="createSection">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Correo electrónico</label>
+              <input type="email" id="empEmail" placeholder="correo@ejemplo.com">
+            </div>
+            <div class="form-group">
+              <label>Contraseña temporal</label>
+              <input type="password" id="empPassword" placeholder="Mínimo 6 caracteres">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nombre completo</label>
+            <input type="text" id="empName" placeholder="Juan Pérez">
+          </div>
+          <div class="form-group">
+            <label>Rol en el sistema</label>
+            <select id="empRole">
+              <option value="employee">Empleado</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Cargo</label>
+            <input type="text" id="empPosition" placeholder="ej. Guía de montaña">
+          </div>
+          <div class="form-group">
+            <label>Área / Departamento</label>
+            <input type="text" id="empDept" placeholder="ej. Actividades">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Teléfono</label>
+            <input type="tel" id="empPhone" placeholder="+56 9 ...">
+          </div>
+          <div class="form-group">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn--primary" id="saveBtn" onclick="saveEmployee()">Crear empleado</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal confirmar eliminación -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal" style="max-width:400px">
+      <div class="modal-header">
+        <span class="modal-title">Eliminar empleado</span>
+        <button class="btn btn--ghost btn--sm" onclick="closeDeleteModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:.95rem;margin-bottom:.75rem">¿Eliminar a <strong id="deleteEmpName"></strong>?</p>
+        <p style="font-size:.84rem;color:var(--t2);line-height:1.5">Se borrará permanentemente su perfil y todo su historial — horarios, fichajes, solicitudes de días libres y horas extras. <strong style="color:var(--red)">Esta acción no se puede deshacer.</strong></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--secondary" onclick="closeDeleteModal()">Cancelar</button>
+        <button class="btn btn--danger" onclick="confirmDelete()">Sí, eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/client.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    let profile = null
+    let employees = []
+
+    function openNewModal() {
+      document.getElementById('modalTitle').textContent = 'Agregar empleado'
+      document.getElementById('saveBtn').textContent = 'Crear empleado'
+      document.getElementById('editId').value = ''
+      document.getElementById('createSection').style.display = 'block'
+      document.getElementById('empEmail').value = ''
+      document.getElementById('empPassword').value = ''
+      document.getElementById('empName').value = ''
+      document.getElementById('empRole').value = 'employee'
+      document.getElementById('empPosition').value = ''
+      document.getElementById('empDept').value = ''
+      document.getElementById('empPhone').value = ''
+      document.getElementById('empModal').classList.add('open')
+    }
+
+    function openEditModal(emp) {
+      document.getElementById('modalTitle').textContent = 'Editar empleado'
+      document.getElementById('saveBtn').textContent = 'Guardar cambios'
+      document.getElementById('editId').value = emp.id
+      document.getElementById('createSection').style.display = 'none'
+      document.getElementById('empName').value = emp.full_name || ''
+      document.getElementById('empRole').value = emp.role || 'employee'
+      document.getElementById('empPosition').value = emp.position || ''
+      document.getElementById('empDept').value = emp.department || ''
+      document.getElementById('empPhone').value = emp.phone || ''
+      document.getElementById('empModal').classList.add('open')
+    }
+
+    function closeModal() { document.getElementById('empModal').classList.remove('open') }
+
+    async function saveEmployee() {
+      const editId = document.getElementById('editId').value
+      const name   = document.getElementById('empName').value.trim()
+      const role   = document.getElementById('empRole').value
+      const pos    = document.getElementById('empPosition').value.trim()
+      const dept   = document.getElementById('empDept').value.trim()
+      const phone  = document.getElementById('empPhone').value.trim()
+      const vac    = 15
+
+      if (!name) { showToast('El nombre es obligatorio', 'error'); return }
+
+      const btn = document.getElementById('saveBtn')
+      btn.disabled = true
+
+      if (editId) {
+        // Editar existente
+        const { error } = await sb.from('profiles').update({
+          full_name: name, role, position: pos, department: dept, phone, vacation_days_total: vac
+        }).eq('id', editId)
+
+        if (error) { showToast('Error al actualizar', 'error'); btn.disabled = false; return }
+        showToast('Empleado actualizado ✓', 'success')
+      } else {
+        // Crear nuevo
+        const email    = document.getElementById('empEmail').value.trim()
+        const password = document.getElementById('empPassword').value
+
+        if (!email) { showToast('El correo es obligatorio', 'error'); btn.disabled = false; return }
+        if (password.length < 6) { showToast('La contraseña debe tener al menos 6 caracteres', 'error'); btn.disabled = false; return }
+
+        const { data: authData, error: signUpError } = await sb.auth.signUp({
+          email, password,
+          options: { data: { full_name: name, role } }
+        })
+
+        if (signUpError) {
+          showToast(signUpError.message, 'error')
+          btn.disabled = false
+          return
+        }
+
+        if (!authData?.user?.id) {
+          showToast('Este correo ya está registrado en el sistema', 'error')
+          btn.disabled = false
+          return
+        }
+
+        // Insertar perfil directamente con el ID del usuario recién creado
+        const { error: profileError } = await sb.from('profiles').upsert({
+          id: authData.user.id,
+          full_name: name,
+          role,
+          position: pos,
+          department: dept,
+          phone,
+          vacation_days_total: 15
+        })
+
+        if (profileError) {
+          showToast('Usuario creado pero error al guardar perfil: ' + profileError.message, 'error')
+          btn.disabled = false
+          return
+        }
+
+        showToast('Empleado creado ✓', 'success')
+      }
+
+      btn.disabled = false
+      closeModal()
+      loadEmployees()
+    }
+
+    let deleteTargetId = null
+
+    function openDeleteModal(id, name) {
+      deleteTargetId = id
+      document.getElementById('deleteEmpName').textContent = name
+      document.getElementById('deleteModal').classList.add('open')
+    }
+
+    function closeDeleteModal() {
+      deleteTargetId = null
+      document.getElementById('deleteModal').classList.remove('open')
+    }
+
+    async function confirmDelete() {
+      if (!deleteTargetId) return
+      const btn = document.querySelector('#deleteModal .btn--danger')
+      btn.disabled = true
+      btn.textContent = 'Eliminando...'
+
+      const { data, error } = await sb
+        .from('profiles')
+        .delete()
+        .eq('id', deleteTargetId)
+        .select()
+
+      if (error || !data || data.length === 0) {
+        showToast('No se pudo eliminar. Ejecuta el SQL de permisos en Supabase.', 'error')
+        btn.disabled = false
+        btn.textContent = 'Sí, eliminar'
+        return
+      }
+
+      showToast('Empleado eliminado ✓', 'success')
+      closeDeleteModal()
+      loadEmployees()
+    }
+
+    async function loadEmployees() {
+      const { data } = await sb.from('profiles').select('*').order('full_name')
+      employees = data || []
+
+      document.getElementById('empCount').textContent = `${employees.length} persona${employees.length !== 1 ? 's' : ''} en el equipo`
+
+      const tbody = document.getElementById('empTable')
+      if (!employees.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2.5rem;color:var(--t2)">Sin empleados registrados</td></tr>'
+        return
+      }
+
+      tbody.innerHTML = employees.map(e => {
+        const initials = e.full_name.split(' ').filter(Boolean).slice(0, 2).map(n => n[0]).join('').toUpperCase()
+        const isAdmin = e.role === 'admin'
+        return `
+          <tr>
+            <td>
+              <div class="flex-center gap-1">
+                <div style="width:32px;height:32px;border-radius:50%;background:${isAdmin ? 'var(--orange)' : 'var(--teal)'};display:flex;align-items:center;justify-content:center;color:white;font-size:.75rem;font-weight:600;flex-shrink:0">${initials}</div>
+                <div>
+                  <div style="font-weight:500">${e.full_name}</div>
+                  ${e.phone ? `<div class="text-muted text-sm">${e.phone}</div>` : ''}
+                </div>
+              </div>
+            </td>
+            <td>${e.position || '<span class="text-muted">—</span>'}</td>
+            <td>${e.department || '<span class="text-muted">—</span>'}</td>
+            <td>
+              <span class="badge ${isAdmin ? 'badge--aprobado' : 'badge--pendiente'}" style="background:${isAdmin ? 'rgba(232,82,26,.1)' : 'rgba(0,184,169,.1)'};color:${isAdmin ? 'var(--orange)' : 'var(--teal)'}">
+                ${isAdmin ? 'Admin' : 'Empleado'}
+              </span>
+            </td>
+            <td>${e.vacation_days_total ?? 15} días</td>
+            <td>
+              <div class="flex-center gap-1">
+                <button class="btn btn--ghost btn--sm" onclick='openEditModal(${JSON.stringify(e).replace(/'/g, "&#39;")})'>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Editar
+                </button>
+                ${e.id !== profile?.id ? `
+                <button class="btn btn--sm" style="color:var(--red);background:rgba(220,38,38,.07);border:none" onclick="openDeleteModal('${e.id}', '${e.full_name.replace(/'/g, "\\'")}')">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  Eliminar
+                </button>` : ''}
+              </div>
+            </td>
+          </tr>
+        `
+      }).join('')
+    }
+
+    ;(async () => {
+      const ctx = await initPage()
+      if (!ctx) return
+      profile = ctx.profile
+
+      // Solo admins pueden acceder
+      if (profile.role !== 'admin') {
+        window.location.href = 'dashboard.html'
+        return
+      }
+
+      loadEmployees()
+    })()
+  </script>
+</body>
+</html>

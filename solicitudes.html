@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solicitudes — First Patagonia HR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <header class="topbar">
+        <button class="menu-toggle" id="menuToggle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-title">
+          <h2>Solicitudes</h2>
+          <p>Días libres y horas extras pendientes de revisión</p>
+        </div>
+      </header>
+
+      <main class="content">
+        <!-- Stats rápidos -->
+        <div class="stats-grid mb-3">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statDLPend">—</div>
+              <div class="stat-label">Días libres pendientes</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--orange">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statHEPend">—</div>
+              <div class="stat-label">Horas extras pendientes</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="statAprobadas">—</div>
+              <div class="stat-label">Aprobadas este mes</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="filter-tabs mb-3">
+          <button class="filter-tab active" onclick="setTab('dias', this)">Días libres</button>
+          <button class="filter-tab" onclick="setTab('extras', this)">Horas extras</button>
+        </div>
+
+        <!-- DÍAS LIBRES -->
+        <div id="tabDias">
+          <div class="page-header">
+            <div><h1 style="font-family:var(--font-serif);font-size:1.6rem;font-weight:400">Días libres</h1></div>
+            <div class="filter-tabs" style="margin-bottom:0">
+              <button class="filter-tab active" onclick="setDLFilter('pendiente',this)">Pendientes</button>
+              <button class="filter-tab" onclick="setDLFilter('all',this)">Todas</button>
+              <button class="filter-tab" onclick="setDLFilter('aprobado',this)">Aprobadas</button>
+              <button class="filter-tab" onclick="setDLFilter('rechazado',this)">Rechazadas</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Empleado</th><th>Tipo</th><th>Desde</th><th>Hasta</th>
+                    <th>Días</th><th>Motivo</th><th>Estado</th><th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="dlTable">
+                  <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- HORAS EXTRAS -->
+        <div id="tabExtras" class="hidden">
+          <div class="page-header">
+            <div><h1 style="font-family:var(--font-serif);font-size:1.6rem;font-weight:400">Horas extras</h1></div>
+            <div class="filter-tabs" style="margin-bottom:0">
+              <button class="filter-tab active" onclick="setHEFilter('pendiente',this)">Pendientes</button>
+              <button class="filter-tab" onclick="setHEFilter('all',this)">Todas</button>
+              <button class="filter-tab" onclick="setHEFilter('aprobado',this)">Aprobadas</button>
+              <button class="filter-tab" onclick="setHEFilter('rechazado',this)">Rechazadas</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Empleado</th><th>Fecha</th><th>Horas</th>
+                    <th>Motivo</th><th>Estado</th><th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="heTable">
+                  <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal revisión -->
+  <div class="modal-overlay" id="reviewModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="reviewTitle">Revisar solicitud</span>
+        <button class="btn btn--ghost btn--sm" onclick="closeReview()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="reviewInfo" style="background:var(--bg);border-radius:var(--r);padding:1rem;margin-bottom:1.2rem;font-size:.88rem;line-height:1.6"></div>
+        <div class="form-group">
+          <label>Nota para el empleado (opcional)</label>
+          <textarea id="adminNote" placeholder="Escribe un comentario..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" id="reviewFooter" style="flex-wrap:wrap;gap:.5rem">
+        <button class="btn btn--secondary" onclick="closeReview()" style="margin-right:auto">Cancelar</button>
+        <button class="btn btn--secondary" id="btnPendiente" onclick="submitReview('pendiente')" style="display:none">Volver a pendiente</button>
+        <button class="btn btn--danger" id="btnRechazar" onclick="submitReview('rechazado')">Rechazar</button>
+        <button class="btn btn--success" id="btnAprobar" onclick="submitReview('aprobado')">Aprobar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/client.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    let profile = null
+    let reviewTarget = null  // { id, type: 'dl'|'he' }
+    let dlFilter = 'pendiente'
+    let heFilter = 'pendiente'
+
+    function setTab(tab, el) {
+      document.querySelectorAll('.filter-tabs .filter-tab').forEach(t => { if(t.closest('.filter-tabs') === el.closest('.filter-tabs')) t.classList.remove('active') })
+      el.classList.add('active')
+      document.getElementById('tabDias').classList.toggle('hidden', tab !== 'dias')
+      document.getElementById('tabExtras').classList.toggle('hidden', tab !== 'extras')
+    }
+
+    function setDLFilter(f, el) {
+      dlFilter = f
+      document.querySelectorAll('#tabDias .filter-tab').forEach(t => t.classList.remove('active'))
+      el.classList.add('active')
+      loadDL()
+    }
+
+    function setHEFilter(f, el) {
+      heFilter = f
+      document.querySelectorAll('#tabExtras .filter-tab').forEach(t => t.classList.remove('active'))
+      el.classList.add('active')
+      loadHE()
+    }
+
+    async function loadStats() {
+      const firstMonth = today().slice(0,7) + '-01'
+      const [{ count: dlPend }, { count: hePend }, { count: aprobadas }] = await Promise.all([
+        sb.from('time_off_requests').select('*',{count:'exact',head:true}).eq('status','pendiente'),
+        sb.from('overtime_records').select('*',{count:'exact',head:true}).eq('status','pendiente'),
+        sb.from('time_off_requests').select('*',{count:'exact',head:true}).eq('status','aprobado').gte('created_at', firstMonth)
+      ])
+      document.getElementById('statDLPend').textContent = dlPend ?? 0
+      document.getElementById('statHEPend').textContent = hePend ?? 0
+      document.getElementById('statAprobadas').textContent = aprobadas ?? 0
+    }
+
+    async function loadDL() {
+      let q = sb.from('time_off_requests').select('*,profiles!employee_id(full_name)').order('created_at',{ascending:false})
+      if (dlFilter !== 'all') q = q.eq('status', dlFilter)
+      const { data } = await q
+      const tbody = document.getElementById('dlTable')
+
+      if (!data?.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:var(--t2)">Sin solicitudes</td></tr>'
+        return
+      }
+
+      tbody.innerHTML = data.map(r => {
+        const days = Math.max(1, Math.round((new Date(r.end_date+'T12:00:00') - new Date(r.start_date+'T12:00:00')) / 86400000) + 1)
+        const info = `<strong>${r.profiles?.full_name}</strong> · ${typeLabel(r.type)}<br>${formatDate(r.start_date)} al ${formatDate(r.end_date)} (${days} día${days>1?'s':''})<br>${r.reason ? `<em>${r.reason}</em>` : ''}`
+        return `<tr>
+          <td><strong>${r.profiles?.full_name||'—'}</strong></td>
+          <td>${typeLabel(r.type)}</td>
+          <td>${formatDate(r.start_date)}</td>
+          <td>${formatDate(r.end_date)}</td>
+          <td>${days}</td>
+          <td style="max-width:150px;font-size:.82rem;color:var(--t2)">${r.reason||'—'}</td>
+          <td>${statusBadge(r.status)}</td>
+          <td>
+            ${r.status==='pendiente' ? `
+              <div class="flex-center gap-1">
+                <button class="btn btn--success btn--sm" onclick='openReview("${r.id}","dl",\`${info.replace(/`/g,"'")}\`)'>Aprobar</button>
+                <button class="btn btn--danger btn--sm" onclick='openReview("${r.id}","dl",\`${info.replace(/`/g,"'")}\`)'>Rechazar</button>
+              </div>`
+            : r.status==='aprobado' ? `
+              <button class="btn btn--sm" style="background:rgba(220,38,38,.08);color:var(--red);border:none" onclick='openReview("${r.id}","dl",\`${info.replace(/`/g,"'")}\`,"aprobado")'>
+                Cancelar aprobación
+              </button>`
+            : '<span class="text-muted text-sm">—</span>'}
+          </td>
+        </tr>`
+      }).join('')
+    }
+
+    async function loadHE() {
+      let q = sb.from('overtime_records').select('*,profiles!employee_id(full_name)').order('date',{ascending:false})
+      if (heFilter !== 'all') q = q.eq('status', heFilter)
+      const { data } = await q
+      const tbody = document.getElementById('heTable')
+
+      if (!data?.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2.5rem;color:var(--t2)">Sin registros</td></tr>'
+        return
+      }
+
+      tbody.innerHTML = data.map(r => {
+        const info = `<strong>${r.profiles?.full_name}</strong> · ${formatDate(r.date)}<br><strong>${r.hours}h</strong> · ${r.reason}`
+        return `<tr>
+          <td><strong>${r.profiles?.full_name||'—'}</strong></td>
+          <td>${formatDate(r.date)}</td>
+          <td><strong>${r.hours}h</strong></td>
+          <td style="font-size:.82rem;color:var(--t2);max-width:180px">${r.reason||'—'}</td>
+          <td>${statusBadge(r.status)}</td>
+          <td>
+            ${r.status==='pendiente' ? `
+              <div class="flex-center gap-1">
+                <button class="btn btn--success btn--sm" onclick='openReview("${r.id}","he",\`${info.replace(/`/g,"'")}\`)'>Aprobar</button>
+                <button class="btn btn--danger btn--sm" onclick='openReview("${r.id}","he",\`${info.replace(/`/g,"'")}\`)'>Rechazar</button>
+              </div>` : '<span class="text-muted text-sm">—</span>'}
+          </td>
+        </tr>`
+      }).join('')
+    }
+
+    function openReview(id, type, info, currentStatus = 'pendiente') {
+      reviewTarget = { id, type }
+      document.getElementById('reviewTitle').textContent =
+        currentStatus === 'aprobado' ? 'Cancelar aprobación' :
+        type === 'dl' ? 'Revisar días libres' : 'Revisar horas extras'
+      document.getElementById('reviewInfo').innerHTML = info
+      document.getElementById('adminNote').value = ''
+
+      // Mostrar botones según estado actual
+      const isCancelling = currentStatus === 'aprobado'
+      document.getElementById('btnAprobar').style.display  = isCancelling ? 'none' : 'inline-flex'
+      document.getElementById('btnRechazar').textContent   = isCancelling ? 'Rechazar' : 'Rechazar'
+      document.getElementById('btnPendiente').style.display = isCancelling ? 'inline-flex' : 'none'
+
+      document.getElementById('reviewModal').classList.add('open')
+    }
+
+    function closeReview() { document.getElementById('reviewModal').classList.remove('open') }
+
+    async function submitReview(status) {
+      const { id, type } = reviewTarget
+      const note = document.getElementById('adminNote').value
+      const table = type === 'dl' ? 'time_off_requests' : 'overtime_records'
+
+      const { error } = await sb.from(table).update({
+        status, admin_notes: note,
+        approved_by: profile.id,
+        approved_at: new Date().toISOString()
+      }).eq('id', id)
+
+      if (error) { showToast('Error al actualizar', 'error'); return }
+      const msg = status === 'aprobado' ? 'Aprobado ✓' : status === 'pendiente' ? 'Vuelta a pendiente ✓' : 'Rechazado'
+      const toastType = status === 'aprobado' ? 'success' : status === 'pendiente' ? 'success' : 'warning'
+      showToast(msg, toastType)
+      closeReview()
+      loadStats()
+      if (type === 'dl') loadDL()
+      else loadHE()
+    }
+
+    ;(async () => {
+      const ctx = await initPage()
+      if (!ctx) return
+      profile = ctx.profile
+      if (profile.role !== 'admin') { window.location.href = 'dashboard.html'; return }
+      loadStats()
+      loadDL()
+      loadHE()
+    })()
+  </script>
+</body>
+</html>
