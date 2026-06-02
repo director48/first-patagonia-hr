@@ -188,6 +188,9 @@
       document.getElementById('statAprobadas').textContent = aprobadas ?? 0
     }
 
+    // Cache seguro — evita bugs con apóstrofos y comillas en nombres
+    const recordCache = {}
+
     async function loadDL() {
       let q = sb.from('time_off_requests').select('*,profiles!employee_id(full_name)').order('created_at',{ascending:false})
       if (dlFilter !== 'all') q = q.eq('status', dlFilter)
@@ -199,9 +202,10 @@
         return
       }
 
+      data.forEach(r => { recordCache[r.id] = { ...r, recordType: 'dl' } })
+
       tbody.innerHTML = data.map(r => {
         const days = Math.max(1, Math.round((new Date(r.end_date+'T12:00:00') - new Date(r.start_date+'T12:00:00')) / 86400000) + 1)
-        const info = `<strong>${r.profiles?.full_name}</strong> · ${typeLabel(r.type)}<br>${formatDate(r.start_date)} al ${formatDate(r.end_date)} (${days} día${days>1?'s':''})<br>${r.reason ? `<em>${r.reason}</em>` : ''}`
         return `<tr>
           <td><strong>${r.profiles?.full_name||'—'}</strong></td>
           <td>${typeLabel(r.type)}</td>
@@ -213,11 +217,11 @@
           <td>
             ${r.status==='pendiente' ? `
               <div class="flex-center gap-1">
-                <button class="btn btn--success btn--sm" onclick='openReview("${r.id}","dl",\`${info.replace(/`/g,"'")}\`)'>Aprobar</button>
-                <button class="btn btn--danger btn--sm" onclick='openReview("${r.id}","dl",\`${info.replace(/`/g,"'")}\`)'>Rechazar</button>
+                <button class="btn btn--success btn--sm" onclick="openReview('${r.id}')">Aprobar</button>
+                <button class="btn btn--danger btn--sm" onclick="openReview('${r.id}')">Rechazar</button>
               </div>`
             : r.status==='aprobado' ? `
-              <button class="btn btn--sm" style="background:rgba(220,38,38,.08);color:var(--red);border:none" onclick='openReview("${r.id}","dl",\`${info.replace(/`/g,"'")}\`,"aprobado")'>
+              <button class="btn btn--sm" style="background:rgba(220,38,38,.08);color:var(--red);border:none" onclick="openReview('${r.id}')">
                 Cancelar aprobación
               </button>`
             : '<span class="text-muted text-sm">—</span>'}
@@ -237,8 +241,9 @@
         return
       }
 
+      data.forEach(r => { recordCache[r.id] = { ...r, recordType: 'he' } })
+
       tbody.innerHTML = data.map(r => {
-        const info = `<strong>${r.profiles?.full_name}</strong> · ${formatDate(r.date)}<br><strong>${r.hours}h</strong> · ${r.reason}`
         return `<tr>
           <td><strong>${r.profiles?.full_name||'—'}</strong></td>
           <td>${formatDate(r.date)}</td>
@@ -248,15 +253,29 @@
           <td>
             ${r.status==='pendiente' ? `
               <div class="flex-center gap-1">
-                <button class="btn btn--success btn--sm" onclick='openReview("${r.id}","he",\`${info.replace(/`/g,"'")}\`)'>Aprobar</button>
-                <button class="btn btn--danger btn--sm" onclick='openReview("${r.id}","he",\`${info.replace(/`/g,"'")}\`)'>Rechazar</button>
+                <button class="btn btn--success btn--sm" onclick="openReview('${r.id}')">Aprobar</button>
+                <button class="btn btn--danger btn--sm" onclick="openReview('${r.id}')">Rechazar</button>
               </div>` : '<span class="text-muted text-sm">—</span>'}
           </td>
         </tr>`
       }).join('')
     }
 
-    function openReview(id, type, info, currentStatus = 'pendiente') {
+    function openReview(id) {
+      const rec = recordCache[id]
+      if (!rec) return
+      const type = rec.recordType
+      const currentStatus = rec.status
+      const name = rec.profiles?.full_name || '—'
+
+      let info = ''
+      if (type === 'dl') {
+        const days = Math.max(1, Math.round((new Date(rec.end_date+'T12:00:00') - new Date(rec.start_date+'T12:00:00')) / 86400000) + 1)
+        info = `<strong>${name}</strong> · ${typeLabel(rec.type)}<br>${formatDate(rec.start_date)} al ${formatDate(rec.end_date)} (${days} día${days>1?'s':''})<br>${rec.reason ? `<em>${rec.reason}</em>` : ''}`
+      } else {
+        info = `<strong>${name}</strong> · ${formatDate(rec.date)}<br><strong>${rec.hours}h</strong>${rec.reason ? ` · ${rec.reason}` : ''}`
+      }
+
       reviewTarget = { id, type }
       document.getElementById('reviewTitle').textContent =
         currentStatus === 'aprobado' ? 'Cancelar aprobación' :

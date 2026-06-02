@@ -58,7 +58,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-value" id="statDias">—</div>
-              <div class="stat-label">Días libres disponibles</div>
+              <div class="stat-label">Días compensatorios</div>
             </div>
           </div>
           <div class="stat-card">
@@ -134,7 +134,7 @@
               <!-- Quick actions -->
               <div class="flex-center gap-1 mb-2" style="flex-wrap:wrap">
                 <a href="dias-libres.html" class="btn btn--secondary btn--sm">
-                  🌴 Solicitar días libres
+                  🌴 Solicitar permiso
                 </a>
                 <a href="horas-extras.html" class="btn btn--secondary btn--sm">
                   ⏱ Registrar HH.EE.
@@ -256,8 +256,11 @@
       const he = (ot || []).reduce((s, r) => s + Number(r.hours), 0)
       document.getElementById('statHE').textContent = he.toFixed(1) + 'h'
 
-      // Días libres
-      document.getElementById('statDias').textContent = profile.vacation_days_total ?? 15
+      // Días compensatorios: total HH.EE. aprobadas (todo el tiempo) / 8
+      const { data: otAll } = await sb.from('overtime_records')
+        .select('hours').eq('employee_id', profile.id).eq('status', 'aprobado')
+      const totalHEAll = (otAll || []).reduce((s, r) => s + Number(r.hours), 0)
+      document.getElementById('statDias').textContent = Math.floor(totalHEAll / 8)
 
       // Último pago
       const lastPay = pays?.[0]

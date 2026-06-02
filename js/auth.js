@@ -57,7 +57,7 @@ function renderSidebar(profile) {
     { section: 'Mi espacio' },
     { href: 'mi-perfil.html',     icon: iconSvg('user'),             label: 'Mi Perfil' },
     { href: 'horarios.html',      icon: iconSvg('calendar-days'),    label: 'Mis Horarios' },
-    { href: 'dias-libres.html',   icon: iconSvg('umbrella'),         label: 'Días Libres' },
+    { href: 'dias-libres.html',   icon: iconSvg('umbrella'),         label: 'Permisos' },
     { href: 'horas-extras.html',  icon: iconSvg('clock'),            label: 'Horas Extras' },
     { href: 'pagos.html',         icon: iconSvg('credit-card'),      label: 'Mis Pagos' },
   ]

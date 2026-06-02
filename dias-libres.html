@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Días Libres — First Patagonia HR</title>
+  <title>Permisos — First Patagonia HR</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
@@ -19,12 +19,12 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
         <div class="topbar-title">
-          <h2>Días Libres</h2>
+          <h2>Permisos</h2>
           <p>Solicitudes de vacaciones y permisos</p>
         </div>
         <div class="topbar-actions">
           <button class="btn btn--primary btn--sm" onclick="openRequestModal()" id="newRequestBtn">
-            + Nueva solicitud
+            + Nuevo permiso
           </button>
         </div>
       </header>
@@ -143,7 +143,7 @@
   <div class="modal-overlay" id="requestModal">
     <div class="modal">
       <div class="modal-header">
-        <span class="modal-title">Nueva solicitud de días libres</span>
+        <span class="modal-title">Solicitar permiso</span>
         <button class="btn btn--ghost btn--sm" onclick="closeRequestModal()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
@@ -392,6 +392,8 @@
       loadPending()
     }
 
+    const pendingCache = {}
+
     async function loadPending() {
       const { data, count } = await sb.from('time_off_requests')
         .select('*, profiles!employee_id(full_name)', { count: 'exact' })
@@ -399,21 +401,18 @@
         .order('created_at')
 
       document.getElementById('pendingCount').textContent =
-        count ? `${count} solicitud${count > 1 ? 'es' : ''} esperando revisión` : 'Sin solicitudes pendientes'
+        count ? `${count} permiso${count > 1 ? 's' : ''} esperando revisión` : 'Sin permisos pendientes'
 
       const tbody = document.getElementById('pendingTable')
       if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--t2)">No hay solicitudes pendientes</td></tr>'
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--t2)">No hay permisos pendientes</td></tr>'
         return
       }
 
+      data.forEach(r => { pendingCache[r.id] = r })
+
       tbody.innerHTML = data.map(r => {
         const days = calcDays(r.start_date, r.end_date)
-        const info = `
-          <strong>${r.profiles?.full_name}</strong><br>
-          ${typeLabel(r.type)} · ${formatDate(r.start_date)} al ${formatDate(r.end_date)} (${days} día${days > 1 ? 's' : ''})<br>
-          ${r.reason ? `<em>${r.reason}</em>` : ''}
-        `
         return `
           <tr>
             <td><strong>${r.profiles?.full_name || '—'}</strong></td>
@@ -424,13 +423,21 @@
             <td>${r.reason || '<span class="text-muted">—</span>'}</td>
             <td>
               <div class="flex-center gap-1">
-                <button class="btn btn--success btn--sm" onclick='openReviewModal("${r.id}", \`${info.replace(/`/g, "'")}\`)'>Aprobar</button>
-                <button class="btn btn--danger btn--sm" onclick='openReviewModal("${r.id}", \`${info.replace(/`/g, "'")}\`)'>Rechazar</button>
+                <button class="btn btn--success btn--sm" onclick="openReviewById('${r.id}')">Aprobar</button>
+                <button class="btn btn--danger btn--sm" onclick="openReviewById('${r.id}')">Rechazar</button>
               </div>
             </td>
           </tr>
         `
       }).join('')
+    }
+
+    function openReviewById(id) {
+      const r = pendingCache[id]
+      if (!r) return
+      const days = calcDays(r.start_date, r.end_date)
+      const info = `<strong>${r.profiles?.full_name || '—'}</strong><br>${typeLabel(r.type)} · ${formatDate(r.start_date)} al ${formatDate(r.end_date)} (${days} día${days > 1 ? 's' : ''})<br>${r.reason ? `<em>${r.reason}</em>` : ''}`
+      openReviewModal(id, info)
     }
 
     async function loadRequests() {
