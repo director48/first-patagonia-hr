@@ -21,6 +21,11 @@
           <h2 id="topbarTitle">Horarios</h2>
           <p id="topbarSub">Turnos semanales</p>
         </div>
+        <div class="topbar-actions">
+          <button class="btn btn--primary btn--sm hidden" id="btnGenerarRotacion" onclick="openRotacion()">
+            ⚙ Generar rotación
+          </button>
+        </div>
       </header>
 
       <main class="content">
@@ -162,6 +167,63 @@
         <button class="btn btn--danger btn--sm" id="deleteShiftBtn" onclick="deleteShift()" style="margin-right:auto;display:none">Eliminar</button>
         <button class="btn btn--secondary" onclick="closeShiftModal()">Cancelar</button>
         <button class="btn btn--primary" onclick="saveShift()">Guardar turno</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal generador de rotación -->
+  <div class="modal-overlay" id="rotacionModal">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-header">
+        <span class="modal-title">Generar rotación de turnos</span>
+        <button class="btn btn--ghost btn--sm" onclick="closeRotacion()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Empleado</label>
+          <select id="rotEmp"></select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fecha inicio del ciclo</label>
+            <input type="date" id="rotStart">
+          </div>
+          <div class="form-group">
+            <label>Número de ciclos</label>
+            <input type="number" id="rotCiclos" value="1" min="1" max="12">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Días de trabajo</label>
+            <input type="number" id="rotWork" value="11" min="1" max="20"
+              oninput="updateRotBalance()">
+          </div>
+          <div class="form-group">
+            <label>Días libres</label>
+            <input type="number" id="rotOff" value="4" min="1" max="14"
+              oninput="updateRotBalance()">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Hora entrada</label>
+            <input type="time" id="rotIn" value="08:00">
+          </div>
+          <div class="form-group">
+            <label>Hora salida</label>
+            <input type="time" id="rotOut" value="17:00">
+          </div>
+        </div>
+
+        <!-- Vista previa de saldo -->
+        <div id="rotBalanceBox" style="border-radius:8px;padding:.9rem 1.1rem;margin-top:.5rem;font-size:.88rem;line-height:1.6"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--secondary" onclick="closeRotacion()">Cancelar</button>
+        <button class="btn btn--primary" onclick="generarRotacion()">Generar turnos</button>
       </div>
     </div>
   </div>
@@ -506,6 +568,133 @@
       loadWeek()
     }
 
+    // ── GENERADOR DE ROTACIÓN ──────────────────────────────────
+    const ROL_BASE = 11  // días de trabajo del rol base
+
+    function openRotacion() {
+      const sel = document.getElementById('rotEmp')
+      sel.innerHTML = employees.map(e => `<option value="${e.id}" data-balance="${e.day_balance ?? 0}">${e.full_name}</option>`).join('')
+      document.getElementById('rotStart').value = today()
+      document.getElementById('rotCiclos').value = '1'
+      document.getElementById('rotWork').value = '11'
+      document.getElementById('rotOff').value = '4'
+      updateRotBalance()
+      document.getElementById('rotacionModal').classList.add('open')
+    }
+
+    function closeRotacion() { document.getElementById('rotacionModal').classList.remove('open') }
+
+    function updateRotBalance() {
+      const work    = parseInt(document.getElementById('rotWork').value) || 11
+      const ciclos  = parseInt(document.getElementById('rotCiclos').value) || 1
+      const sel     = document.getElementById('rotEmp')
+      const currentBalance = parseInt(sel.selectedOptions[0]?.dataset.balance ?? 0)
+      const diffPerCycle   = work - ROL_BASE           // +1, 0, -1...
+      const totalDiff      = diffPerCycle * ciclos      // cambio acumulado
+      const newBalance     = currentBalance + totalDiff // nuevo saldo
+
+      const box = document.getElementById('rotBalanceBox')
+      let color = '#f0fdf4'; let border = '#16a34a'
+      let msg = ''
+
+      if (diffPerCycle === 0) {
+        msg = `Ciclo normal (${work}x${document.getElementById('rotOff').value}). Saldo sin cambio.`
+        color = 'rgba(0,0,0,.03)'; border = 'var(--border)'
+      } else if (diffPerCycle < 0) {
+        msg = `Ciclo corto: empleado trabajará <strong>${work} días</strong> (rol base: ${ROL_BASE}). Le <strong>quedará debiendo ${Math.abs(totalDiff)} día${Math.abs(totalDiff)>1?'s':''}</strong> al hotel.`
+        color = 'rgba(220,38,38,.06)'; border = 'var(--red)'
+      } else {
+        msg = `Ciclo largo: empleado trabajará <strong>${work} días</strong>. Devolverá <strong>${totalDiff} día${totalDiff>1?'s':''}</strong> adeudado${totalDiff>1?'s':''} al hotel.`
+        color = 'rgba(22,163,74,.06)'; border = '#16a34a'
+      }
+
+      const balanceText = newBalance === 0
+        ? `<strong style="color:var(--green)">Saldo resultante: ✓ A mano (0 días)</strong>`
+        : newBalance > 0
+        ? `<strong style="color:var(--red)">Saldo resultante: empleado debe ${newBalance} día${newBalance>1?'s':''} al hotel</strong>`
+        : `<strong style="color:var(--teal)">Saldo resultante: hotel debe ${Math.abs(newBalance)} día${Math.abs(newBalance)>1?'s':''} al empleado</strong>`
+
+      box.style.background = color
+      box.style.border = `1px solid ${border}`
+      box.innerHTML = `${msg}<br>${balanceText}`
+    }
+
+    async function generarRotacion() {
+      const empId   = document.getElementById('rotEmp').value
+      const start   = document.getElementById('rotStart').value
+      const ciclos  = parseInt(document.getElementById('rotCiclos').value) || 1
+      const work    = parseInt(document.getElementById('rotWork').value) || 11
+      const off     = parseInt(document.getElementById('rotOff').value) || 4
+      const inTime  = document.getElementById('rotIn').value
+      const outTime = document.getElementById('rotOut').value
+
+      if (!start) { showToast('Selecciona fecha de inicio', 'error'); return }
+      if (inTime >= outTime) { showToast('La hora entrada debe ser antes de la salida', 'error'); return }
+
+      const btn = document.querySelector('#rotacionModal .btn--primary')
+      btn.disabled = true
+      btn.textContent = 'Generando...'
+
+      // Construir lista de fechas
+      const records = []
+      let current = new Date(start + 'T12:00:00')
+
+      for (let c = 0; c < ciclos; c++) {
+        // Días de trabajo
+        for (let w = 0; w < work; w++) {
+          records.push({
+            employee_id: empId,
+            date: current.toISOString().split('T')[0],
+            day_type: 'turno',
+            shift_start: inTime,
+            shift_end: outTime,
+            notes: '',
+            created_by: profile.id
+          })
+          current.setDate(current.getDate() + 1)
+        }
+        // Días libres
+        for (let o = 0; o < off; o++) {
+          records.push({
+            employee_id: empId,
+            date: current.toISOString().split('T')[0],
+            day_type: 'libre',
+            shift_start: null,
+            shift_end: null,
+            notes: '',
+            created_by: profile.id
+          })
+          current.setDate(current.getDate() + 1)
+        }
+      }
+
+      // Upsert en lotes de 50
+      const chunk = 50
+      for (let i = 0; i < records.length; i += chunk) {
+        const { error } = await sb.from('schedules').upsert(
+          records.slice(i, i + chunk),
+          { onConflict: 'employee_id,date' }
+        )
+        if (error) { showToast('Error al generar: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Generar turnos'; return }
+      }
+
+      // Actualizar saldo del empleado
+      const sel = document.getElementById('rotEmp')
+      const currentBalance = parseInt(sel.selectedOptions[0]?.dataset.balance ?? 0)
+      const newBalance = currentBalance + (work - ROL_BASE) * ciclos
+      await sb.from('profiles').update({ day_balance: newBalance }).eq('id', empId)
+
+      // Actualizar dato local para futuras consultas en el mismo modal
+      const emp = employees.find(e => e.id === empId)
+      if (emp) emp.day_balance = newBalance
+
+      showToast(`${records.length} días generados ✓`, 'success')
+      btn.disabled = false
+      btn.textContent = 'Generar turnos'
+      closeRotacion()
+      loadWeek()
+    }
+
     ;(async () => {
       const ctx = await initPage()
       if (!ctx) return
@@ -515,8 +704,12 @@
         document.getElementById('topbarTitle').textContent = 'Turnos del equipo'
         document.getElementById('topbarSub').textContent = 'Grilla semanal de todos los empleados'
         document.getElementById('rosterSection').classList.remove('hidden')
+        document.getElementById('btnGenerarRotacion').classList.remove('hidden')
         const { data } = await sb.from('profiles').select('*').order('full_name')
         employees = data || []
+        // Listener: actualizar balance en modal al cambiar empleado
+        document.getElementById('rotEmp')?.addEventListener('change', updateRotBalance)
+        document.getElementById('rotCiclos')?.addEventListener('input', updateRotBalance)
       } else {
         document.getElementById('empSection').classList.remove('hidden')
       }
