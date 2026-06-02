@@ -618,11 +618,10 @@
       if (!start) return
 
       const total = work * ciclos
+      // Guardar selecciones anteriores ANTES de limpiar el array
+      const prev = [...daySchedules]
       daySchedules = []
       let current = new Date(start + 'T12:00:00')
-
-      // Mantener selecciones anteriores si el usuario ya configuró días
-      const prev = [...daySchedules]
 
       for (let i = 0; i < total; i++) {
         const d = current.toISOString().split('T')[0]

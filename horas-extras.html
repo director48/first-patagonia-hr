@@ -349,6 +349,9 @@
       `).join('')
     }
 
+    // Inicializar cache para evitar crash si admin aprueba antes de cargar pendientes
+    window._hePendingCache = {}
+
     ;(async () => {
       const ctx = await initPage()
       if (!ctx) return
