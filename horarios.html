@@ -178,73 +178,61 @@
 
   <!-- Modal generador de rotación -->
   <div class="modal-overlay" id="rotacionModal">
-    <div class="modal" style="max-width:520px">
+    <div class="modal" style="max-width:600px">
       <div class="modal-header">
         <span class="modal-title">Generar rotación de turnos</span>
         <button class="btn btn--ghost btn--sm" onclick="closeRotacion()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="max-height:80vh;overflow-y:auto">
+
+        <!-- Patrón -->
         <div class="form-group">
           <label>Empleado</label>
-          <select id="rotEmp"></select>
+          <select id="rotEmp" onchange="updateRotBalance()"></select>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Fecha inicio del ciclo</label>
-            <input type="date" id="rotStart">
+            <label>Fecha inicio</label>
+            <input type="date" id="rotStart" oninput="buildDayList()">
           </div>
           <div class="form-group">
             <label>Número de ciclos</label>
-            <input type="number" id="rotCiclos" value="1" min="1" max="12">
+            <input type="number" id="rotCiclos" value="1" min="1" max="4" oninput="buildDayList()">
           </div>
         </div>
-        <div class="form-row">
+        <div class="form-row" style="margin-bottom:.5rem">
           <div class="form-group">
             <label>Días de trabajo</label>
-            <input type="number" id="rotWork" value="11" min="1" max="20"
-              oninput="updateRotBalance()">
+            <input type="number" id="rotWork" value="11" min="1" max="20" oninput="buildDayList()">
           </div>
           <div class="form-group">
             <label>Días libres</label>
-            <input type="number" id="rotOff" value="4" min="1" max="14"
-              oninput="updateRotBalance()">
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Turno de trabajo</label>
-          <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
-            <button type="button" class="btn btn--secondary btn--sm" style="flex:1;justify-content:center" onclick="setRotShift('manana')">
-              🌅 Mañana<br><small style="font-weight:400;opacity:.7">07:30 – 15:30</small>
-            </button>
-            <button type="button" class="btn btn--secondary btn--sm" style="flex:1;justify-content:center" onclick="setRotShift('tarde')">
-              🌆 Tarde<br><small style="font-weight:400;opacity:.7">15:00 – 23:00</small>
-            </button>
-            <button type="button" class="btn btn--secondary btn--sm" id="btnRotManual" style="flex:1;justify-content:center" onclick="setRotShift('manual')">
-              ✏️ Manual
-            </button>
-          </div>
-          <div id="rotManualFields" style="display:none">
-            <div class="form-row">
-              <div class="form-group" style="margin-bottom:0">
-                <label>Hora entrada</label>
-                <input type="time" id="rotIn" value="07:30">
-              </div>
-              <div class="form-group" style="margin-bottom:0">
-                <label>Hora salida</label>
-                <input type="time" id="rotOut" value="15:30">
-              </div>
-            </div>
+            <input type="number" id="rotOff" value="4" min="1" max="14" oninput="updateRotBalance()">
           </div>
         </div>
 
-        <!-- Vista previa de saldo -->
-        <div id="rotBalanceBox" style="border-radius:8px;padding:.9rem 1.1rem;margin-top:.5rem;font-size:.88rem;line-height:1.6"></div>
+        <!-- Aplicar a todos -->
+        <div style="background:var(--bg);border-radius:8px;padding:.75rem 1rem;margin-bottom:.75rem">
+          <div style="font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--t2);margin-bottom:.5rem">Aplicar a todos los días de trabajo</div>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+            <button type="button" class="btn btn--secondary btn--sm" onclick="applyAllDays('manana')">🌅 Mañana (07:30–15:30)</button>
+            <button type="button" class="btn btn--secondary btn--sm" onclick="applyAllDays('tarde')">🌆 Tarde (15:00–23:00)</button>
+            <button type="button" class="btn btn--secondary btn--sm" onclick="applyAllDays('noche')">🌙 Noche (23:00–07:00)</button>
+          </div>
+        </div>
+
+        <!-- Lista de días individuales -->
+        <div style="font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--t2);margin-bottom:.4rem">Turno por día</div>
+        <div id="rotDayList" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;max-height:320px;overflow-y:auto"></div>
+
+        <!-- Balance -->
+        <div id="rotBalanceBox" style="border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;font-size:.85rem;line-height:1.6"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn--secondary" onclick="closeRotacion()">Cancelar</button>
-        <button class="btn btn--primary" onclick="generarRotacion()">Generar turnos</button>
+        <button class="btn btn--primary" id="btnGenerar" onclick="generarRotacion()">Generar turnos</button>
       </div>
     </div>
   </div>
@@ -606,33 +594,10 @@
       event.target.style.background = 'rgba(232,82,26,.1)'
     }
 
-    // Para el generador de rotación
-    let rotShiftType = 'manana'
-    function setRotShift(type) {
-      rotShiftType = type
-      const btns = document.querySelectorAll('#rotacionModal .btn--secondary:not([id])')
-      // Reset botones
-      document.querySelectorAll('#rotacionModal button[onclick^="setRotShift"]').forEach(b => {
-        b.className = 'btn btn--secondary btn--sm'
-        b.style.flex = '1'; b.style.justifyContent = 'center'
-      })
-      // Activar el seleccionado
-      event.target.className = 'btn btn--primary btn--sm'
-      event.target.style.flex = '1'; event.target.style.justifyContent = 'center'
-
-      const manual = document.getElementById('rotManualFields')
-      if (type === 'manual') {
-        manual.style.display = 'block'
-      } else {
-        manual.style.display = 'none'
-        const s = SHIFTS[type]
-        document.getElementById('rotIn').value  = s.in
-        document.getElementById('rotOut').value = s.out
-      }
-    }
-
     // ── GENERADOR DE ROTACIÓN ──────────────────────────────────
-    const ROL_BASE = 11  // días de trabajo del rol base
+    const ROL_BASE = 11
+    let daySchedules = []   // [{ date, in, out, type }]
+    const DAYS_ES_FULL = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
 
     function openRotacion() {
       const sel = document.getElementById('rotEmp')
@@ -641,88 +606,166 @@
       document.getElementById('rotCiclos').value = '1'
       document.getElementById('rotWork').value = '11'
       document.getElementById('rotOff').value = '4'
-      // Preset por defecto: Mañana
-      rotShiftType = 'manana'
-      document.getElementById('rotIn').value  = '07:30'
-      document.getElementById('rotOut').value = '15:30'
-      document.getElementById('rotManualFields').style.display = 'none'
-      // Activar botón mañana visualmente
-      const btns = document.querySelectorAll('#rotacionModal button[onclick^="setRotShift"]')
-      btns.forEach((b, i) => {
-        b.className = i === 0 ? 'btn btn--primary btn--sm' : 'btn btn--secondary btn--sm'
-        b.style.flex = '1'; b.style.justifyContent = 'center'
-      })
-      updateRotBalance()
+      buildDayList()
       document.getElementById('rotacionModal').classList.add('open')
     }
 
     function closeRotacion() { document.getElementById('rotacionModal').classList.remove('open') }
 
+    function buildDayList() {
+      const start  = document.getElementById('rotStart').value
+      const work   = parseInt(document.getElementById('rotWork').value) || 11
+      const ciclos = parseInt(document.getElementById('rotCiclos').value) || 1
+      if (!start) return
+
+      const total = work * ciclos
+      daySchedules = []
+      let current = new Date(start + 'T12:00:00')
+
+      // Mantener selecciones anteriores si el usuario ya configuró días
+      const prev = [...daySchedules]
+
+      for (let i = 0; i < total; i++) {
+        const d = current.toISOString().split('T')[0]
+        daySchedules.push({
+          date: d,
+          in:   prev[i]?.in  || '07:30',
+          out:  prev[i]?.out || '15:30',
+          type: prev[i]?.type || 'manana'
+        })
+        current.setDate(current.getDate() + 1)
+      }
+
+      renderDayList()
+      updateRotBalance()
+    }
+
+    function renderDayList() {
+      const list = document.getElementById('rotDayList')
+      if (!daySchedules.length) { list.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--t2);font-size:.85rem">Selecciona una fecha de inicio</div>'; return }
+
+      list.innerHTML = daySchedules.map((day, i) => {
+        const dt   = new Date(day.date + 'T12:00:00')
+        const dow  = DAYS_ES_FULL[dt.getDay()]
+        const label = `${dow} ${dt.getDate()} ${dt.toLocaleDateString('es-CL',{month:'short'})}`
+        const cicleNum = Math.floor(i / (parseInt(document.getElementById('rotWork').value)||11)) + 1
+        const dayNum   = (i % (parseInt(document.getElementById('rotWork').value)||11)) + 1
+        const isBorder = i > 0 && dayNum === 1 ? 'border-top:2px solid var(--orange)' : ''
+
+        return `
+          <div style="display:flex;align-items:center;gap:.5rem;padding:.55rem .9rem;border-bottom:1px solid var(--border);${isBorder}">
+            <div style="min-width:110px;font-size:.8rem">
+              <span style="color:var(--t2);font-size:.68rem">Día ${dayNum}</span>
+              <div style="font-weight:500">${label}</div>
+            </div>
+            <div style="display:flex;gap:.25rem;flex:1;flex-wrap:wrap">
+              <button type="button" onclick="setDayShift(${i},'manana')"
+                class="btn btn--sm ${day.type==='manana'?'btn--primary':'btn--secondary'}"
+                style="padding:.3rem .6rem;font-size:.72rem">🌅 M</button>
+              <button type="button" onclick="setDayShift(${i},'tarde')"
+                class="btn btn--sm ${day.type==='tarde'?'btn--primary':'btn--secondary'}"
+                style="padding:.3rem .6rem;font-size:.72rem">🌆 T</button>
+              <button type="button" onclick="setDayShift(${i},'noche')"
+                class="btn btn--sm ${day.type==='noche'?'btn--primary':'btn--secondary'}"
+                style="padding:.3rem .6rem;font-size:.72rem">🌙 N</button>
+              <button type="button" onclick="setDayShift(${i},'manual')"
+                class="btn btn--sm ${day.type==='manual'?'btn--teal':'btn--secondary'}"
+                style="padding:.3rem .6rem;font-size:.72rem">✏️</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:.3rem;font-size:.78rem;min-width:90px">
+              ${day.type === 'manual'
+                ? `<input type="time" value="${day.in}" onchange="updateDayTime(${i},'in',this.value)" style="width:70px;border:1px solid var(--border);border-radius:4px;padding:.2rem .3rem;font-size:.75rem">
+                   <span>–</span>
+                   <input type="time" value="${day.out}" onchange="updateDayTime(${i},'out',this.value)" style="width:70px;border:1px solid var(--border);border-radius:4px;padding:.2rem .3rem;font-size:.75rem">`
+                : `<span style="color:var(--t2)">${day.in}–${day.out}</span>`
+              }
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+
+    function setDayShift(i, type) {
+      const s = SHIFTS[type] || SHIFTS.manana
+      daySchedules[i].type = type
+      if (type !== 'manual') {
+        daySchedules[i].in  = s.in
+        daySchedules[i].out = s.out
+      }
+      renderDayList()
+    }
+
+    function updateDayTime(i, field, val) {
+      daySchedules[i][field] = val
+    }
+
+    function applyAllDays(type) {
+      const s = SHIFTS[type]
+      daySchedules.forEach(d => { d.type = type; d.in = s.in; d.out = s.out })
+      renderDayList()
+    }
+
     function updateRotBalance() {
-      const work    = parseInt(document.getElementById('rotWork').value) || 11
-      const ciclos  = parseInt(document.getElementById('rotCiclos').value) || 1
-      const sel     = document.getElementById('rotEmp')
+      const work   = parseInt(document.getElementById('rotWork').value) || 11
+      const ciclos = parseInt(document.getElementById('rotCiclos').value) || 1
+      const sel    = document.getElementById('rotEmp')
       const currentBalance = parseInt(sel.selectedOptions[0]?.dataset.balance ?? 0)
-      const diffPerCycle   = work - ROL_BASE           // +1, 0, -1...
-      const totalDiff      = diffPerCycle * ciclos      // cambio acumulado
-      const newBalance     = currentBalance + totalDiff // nuevo saldo
+      const diffPerCycle   = work - ROL_BASE
+      const totalDiff      = diffPerCycle * ciclos
+      const newBalance     = currentBalance + totalDiff
 
       const box = document.getElementById('rotBalanceBox')
-      let color = '#f0fdf4'; let border = '#16a34a'
-      let msg = ''
+      if (!box) return
+      let color = 'rgba(0,0,0,.03)'; let border = 'var(--border)'; let msg = ''
 
       if (diffPerCycle === 0) {
-        msg = `Ciclo normal (${work}x${document.getElementById('rotOff').value}). Saldo sin cambio.`
-        color = 'rgba(0,0,0,.03)'; border = 'var(--border)'
+        msg = `Ciclo normal (${work}×${document.getElementById('rotOff').value}). Saldo sin cambio.`
       } else if (diffPerCycle < 0) {
-        msg = `Ciclo corto: empleado trabajará <strong>${work} días</strong> (rol base: ${ROL_BASE}). Le <strong>quedará debiendo ${Math.abs(totalDiff)} día${Math.abs(totalDiff)>1?'s':''}</strong> al hotel.`
+        msg = `Ciclo corto — empleado trabajará <strong>${work} días</strong>. Quedará debiendo <strong>${Math.abs(totalDiff)} día${Math.abs(totalDiff)>1?'s':''}</strong>.`
         color = 'rgba(220,38,38,.06)'; border = 'var(--red)'
       } else {
-        msg = `Ciclo largo: empleado trabajará <strong>${work} días</strong>. Devolverá <strong>${totalDiff} día${totalDiff>1?'s':''}</strong> adeudado${totalDiff>1?'s':''} al hotel.`
+        msg = `Ciclo largo — empleado trabajará <strong>${work} días</strong>. Devuelve <strong>${totalDiff} día${totalDiff>1?'s':''}</strong>.`
         color = 'rgba(22,163,74,.06)'; border = '#16a34a'
       }
 
-      const balanceText = newBalance === 0
-        ? `<strong style="color:var(--green)">Saldo resultante: ✓ A mano (0 días)</strong>`
+      const balText = newBalance === 0
+        ? `<strong style="color:var(--green)">Saldo resultante: ✓ A mano</strong>`
         : newBalance > 0
-        ? `<strong style="color:var(--red)">Saldo resultante: empleado debe ${newBalance} día${newBalance>1?'s':''} al hotel</strong>`
-        : `<strong style="color:var(--teal)">Saldo resultante: hotel debe ${Math.abs(newBalance)} día${Math.abs(newBalance)>1?'s':''} al empleado</strong>`
+        ? `<strong style="color:var(--red)">Saldo resultante: debe ${newBalance} día${newBalance>1?'s':''}</strong>`
+        : `<strong style="color:var(--teal)">Saldo resultante: le deben ${Math.abs(newBalance)} día${Math.abs(newBalance)>1?'s':''}</strong>`
 
-      box.style.background = color
-      box.style.border = `1px solid ${border}`
-      box.innerHTML = `${msg}<br>${balanceText}`
+      box.style.cssText = `border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;font-size:.85rem;line-height:1.6;background:${color};border:1px solid ${border}`
+      box.innerHTML = `${msg}<br>${balText}`
     }
 
     async function generarRotacion() {
-      const empId   = document.getElementById('rotEmp').value
-      const start   = document.getElementById('rotStart').value
-      const ciclos  = parseInt(document.getElementById('rotCiclos').value) || 1
-      const work    = parseInt(document.getElementById('rotWork').value) || 11
-      const off     = parseInt(document.getElementById('rotOff').value) || 4
-      const inTime  = document.getElementById('rotIn').value
-      const outTime = document.getElementById('rotOut').value
+      const empId  = document.getElementById('rotEmp').value
+      const start  = document.getElementById('rotStart').value
+      const ciclos = parseInt(document.getElementById('rotCiclos').value) || 1
+      const work   = parseInt(document.getElementById('rotWork').value) || 11
+      const off    = parseInt(document.getElementById('rotOff').value) || 4
 
       if (!start) { showToast('Selecciona fecha de inicio', 'error'); return }
-      if (inTime >= outTime) { showToast('La hora entrada debe ser antes de la salida', 'error'); return }
+      if (!daySchedules.length) { showToast('Configura los días de trabajo', 'error'); return }
 
-      const btn = document.querySelector('#rotacionModal .btn--primary')
-      btn.disabled = true
-      btn.textContent = 'Generando...'
+      const btn = document.getElementById('btnGenerar')
+      btn.disabled = true; btn.textContent = 'Generando...'
 
-      // Construir lista de fechas
       const records = []
       let current = new Date(start + 'T12:00:00')
 
       for (let c = 0; c < ciclos; c++) {
-        // Días de trabajo
+        // Días de trabajo con horario individual
         for (let w = 0; w < work; w++) {
+          const idx = c * work + w
+          const day = daySchedules[idx] || daySchedules[w % daySchedules.length]
           records.push({
             employee_id: empId,
             date: current.toISOString().split('T')[0],
             day_type: 'turno',
-            shift_start: inTime,
-            shift_end: outTime,
-            notes: '',
+            shift_start: day.in,
+            shift_end: day.out,
+            notes: day.type === 'noche' ? 'Turno noche' : '',
             created_by: profile.id
           })
           current.setDate(current.getDate() + 1)
@@ -733,36 +776,27 @@
             employee_id: empId,
             date: current.toISOString().split('T')[0],
             day_type: 'libre',
-            shift_start: null,
-            shift_end: null,
-            notes: '',
-            created_by: profile.id
+            shift_start: null, shift_end: null, notes: '', created_by: profile.id
           })
           current.setDate(current.getDate() + 1)
         }
       }
 
       // Upsert en lotes de 50
-      const chunk = 50
-      for (let i = 0; i < records.length; i += chunk) {
-        const { error } = await sb.from('schedules').upsert(
-          records.slice(i, i + chunk),
-          { onConflict: 'employee_id,date' }
-        )
-        if (error) { showToast('Error al generar: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Generar turnos'; return }
+      for (let i = 0; i < records.length; i += 50) {
+        const { error } = await sb.from('schedules').upsert(records.slice(i, i+50), { onConflict: 'employee_id,date' })
+        if (error) { showToast('Error: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Generar turnos'; return }
       }
 
-      // Actualizar saldo del empleado
+      // Actualizar saldo
       const sel = document.getElementById('rotEmp')
       const currentBalance = parseInt(sel.selectedOptions[0]?.dataset.balance ?? 0)
       const newBalance = currentBalance + (work - ROL_BASE) * ciclos
       await sb.from('profiles').update({ day_balance: newBalance }).eq('id', empId)
-
-      // Actualizar dato local para futuras consultas en el mismo modal
       const emp = employees.find(e => e.id === empId)
       if (emp) emp.day_balance = newBalance
 
-      showToast(`${records.length} días generados ✓`, 'success')
+      showToast(`${records.filter(r=>r.day_type==='turno').length} turnos generados ✓`, 'success')
       btn.disabled = false
       btn.textContent = 'Generar turnos'
       closeRotacion()
