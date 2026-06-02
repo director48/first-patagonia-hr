@@ -670,10 +670,13 @@
             </div>
             <div style="display:flex;align-items:center;gap:.3rem;font-size:.78rem;min-width:90px">
               ${day.type === 'manual'
-                ? `<input type="time" value="${day.in}" onchange="updateDayTime(${i},'in',this.value)" style="width:70px;border:1px solid var(--border);border-radius:4px;padding:.2rem .3rem;font-size:.75rem">
-                   <span>–</span>
-                   <input type="time" value="${day.out}" onchange="updateDayTime(${i},'out',this.value)" style="width:70px;border:1px solid var(--border);border-radius:4px;padding:.2rem .3rem;font-size:.75rem">`
-                : `<span style="color:var(--t2)">${day.in}–${day.out}</span>`
+                ? `<div style="display:flex;flex-direction:column;gap:.25rem">
+                     <input type="time" value="${day.in}" onchange="updateDayTime(${i},'in',this.value)"
+                       style="width:110px;border:1.5px solid var(--orange);border-radius:6px;padding:.35rem .5rem;font-size:.88rem;font-family:var(--font-sans)">
+                     <input type="time" value="${day.out}" onchange="updateDayTime(${i},'out',this.value)"
+                       style="width:110px;border:1.5px solid var(--orange);border-radius:6px;padding:.35rem .5rem;font-size:.88rem;font-family:var(--font-sans)">
+                   </div>`
+                : `<span style="color:var(--t2);font-size:.82rem">${day.in}<br>${day.out}</span>`
               }
             </div>
           </div>
