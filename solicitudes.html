@@ -69,16 +69,31 @@
             <p style="font-size:.84rem;color:var(--t2);margin-top:.25rem">Registros donde el empleado salió antes o después de lo planificado</p>
           </div>
           <div class="card">
+            <div class="card-header">
+              <span class="card-title" id="reviewCardTitle">Registros por revisar</span>
+              <div class="flex-center gap-1">
+                <button class="btn btn--ghost btn--sm" id="btnSelectAll" onclick="toggleSelectAll()" style="display:none">Seleccionar todo</button>
+                <button class="btn btn--success btn--sm" id="btnApproveSelected" style="display:none" onclick="approveSelected()">
+                  Aprobar seleccionados (<span id="selectedCount">0</span>)
+                </button>
+                <button class="btn btn--primary btn--sm" id="btnApproveAll" style="display:none" onclick="approveAll()">
+                  Aprobar todo
+                </button>
+              </div>
+            </div>
             <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
+                    <th style="width:36px;padding-left:.75rem">
+                      <input type="checkbox" id="masterCheck" onchange="onMasterCheck(this)" title="Seleccionar todo">
+                    </th>
                     <th>Empleado</th><th>Fecha</th><th>Entrada</th><th>Salida</th>
                     <th>Horas reales</th><th>Turno asignado</th><th>Motivo del empleado</th><th>Acción</th>
                   </tr>
                 </thead>
                 <tbody id="reviewTable">
-                  <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
+                  <tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -356,8 +371,17 @@
       badge.textContent = count
       badge.style.display = count > 0 ? 'inline' : 'none'
 
+      // Show / hide bulk-action buttons
+      const hasPending = (data?.length ?? 0) > 0
+      document.getElementById('btnSelectAll').style.display    = hasPending ? 'inline-flex' : 'none'
+      document.getElementById('btnApproveAll').style.display   = hasPending ? 'inline-flex' : 'none'
+      document.getElementById('btnApproveSelected').style.display = 'none'
+      document.getElementById('selectedCount').textContent = '0'
+      const masterCheck = document.getElementById('masterCheck')
+      if (masterCheck) { masterCheck.checked = false; masterCheck.indeterminate = false }
+
       if (!data?.length) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:var(--t2)">Sin registros pendientes de revisión ✓</td></tr>'
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2.5rem;color:var(--t2)">Sin registros pendientes de revisión ✓</td></tr>'
         return
       }
 
@@ -387,6 +411,9 @@
 
         const dt = new Date(r.date + 'T12:00:00')
         return `<tr>
+          <td style="padding-left:.75rem">
+            <input type="checkbox" class="review-check" value="${r.id}" onchange="updateSelectionUI()">
+          </td>
           <td><strong>${r.profiles?.full_name || '—'}</strong></td>
           <td>${dt.toLocaleDateString('es-CL',{weekday:'short',day:'2-digit',month:'short'})}</td>
           <td>${formatTime(r.clock_in)}</td>
@@ -402,6 +429,52 @@
           </td>
         </tr>`
       })).then(rows => rows.join(''))
+    }
+
+    // ── Bulk selection helpers ─────────────────────────────────
+    function onMasterCheck(el) {
+      document.querySelectorAll('.review-check').forEach(cb => { cb.checked = el.checked })
+      updateSelectionUI()
+    }
+
+    function toggleSelectAll() {
+      const master = document.getElementById('masterCheck')
+      if (!master) return
+      master.checked = !master.checked
+      onMasterCheck(master)
+    }
+
+    function updateSelectionUI() {
+      const all     = document.querySelectorAll('.review-check')
+      const checked = [...document.querySelectorAll('.review-check:checked')]
+      const n = checked.length
+      document.getElementById('selectedCount').textContent = n
+      document.getElementById('btnApproveSelected').style.display = n > 0 ? 'inline-flex' : 'none'
+      const master = document.getElementById('masterCheck')
+      if (master) {
+        master.indeterminate = n > 0 && n < all.length
+        master.checked = n > 0 && n === all.length
+      }
+    }
+
+    async function approveSelected() {
+      const ids = [...document.querySelectorAll('.review-check:checked')].map(cb => cb.value)
+      if (!ids.length) return
+      const { error } = await sb.from('clock_records').update({ needs_review: false }).in('id', ids)
+      if (error) { showToast('Error al actualizar', 'error'); return }
+      showToast(`${ids.length} registro${ids.length > 1 ? 's aprobados' : ' aprobado'} ✓`, 'success')
+      loadReviewQueue()
+      loadStats()
+    }
+
+    async function approveAll() {
+      const { error } = await sb.from('clock_records')
+        .update({ needs_review: false })
+        .eq('needs_review', true)
+      if (error) { showToast('Error al aprobar todo', 'error'); return }
+      showToast('Todos los registros aprobados ✓', 'success')
+      loadReviewQueue()
+      loadStats()
     }
 
     async function approveReview(id) {
