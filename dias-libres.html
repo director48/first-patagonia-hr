@@ -178,8 +178,17 @@
           <strong style="color:var(--amber)">⚠ Permiso solapado</strong>
           <div id="overlapDetail" style="color:var(--t2);margin-top:.25rem"></div>
           <label style="display:flex;align-items:center;gap:.5rem;margin-top:.6rem;cursor:pointer;color:var(--t1)">
-            <input type="checkbox" id="overlapConfirm" onchange="document.getElementById('submitReqBtn').disabled = !this.checked">
+            <input type="checkbox" id="overlapConfirm" onchange="updateReqSubmit()">
             Entiendo el solapamiento y quiero enviar igual
+          </label>
+        </div>
+        <!-- Aviso saldo compensatorio insuficiente -->
+        <div id="compBalanceWarning" style="display:none;margin-top:.75rem;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.25);border-radius:6px;padding:.75rem 1rem;font-size:.83rem;line-height:1.5">
+          <strong style="color:var(--red)">⚠ Saldo compensatorio insuficiente</strong>
+          <div id="compBalanceDetail" style="color:var(--t2);margin-top:.25rem"></div>
+          <label style="display:flex;align-items:center;gap:.5rem;margin-top:.6rem;cursor:pointer;color:var(--t1)">
+            <input type="checkbox" id="compBalanceConfirm" onchange="updateReqSubmit()">
+            Entiendo y quiero enviar la solicitud igual
           </label>
         </div>
       </div>
@@ -325,6 +334,14 @@
       loadRequests()
     }
 
+    function updateReqSubmit() {
+      const overlapBlocking = document.getElementById('overlapWarning').style.display !== 'none'
+                              && !document.getElementById('overlapConfirm').checked
+      const compBlocking    = document.getElementById('compBalanceWarning').style.display !== 'none'
+                              && !document.getElementById('compBalanceConfirm').checked
+      document.getElementById('submitReqBtn').disabled = overlapBlocking || compBlocking
+    }
+
     function openRequestModal() {
       const today = new Date().toISOString().split('T')[0]
       document.getElementById('reqStart').value = today
@@ -333,8 +350,12 @@
       document.getElementById('daysPreview').textContent = '1 día'
       document.getElementById('overlapWarning').style.display = 'none'
       document.getElementById('overlapConfirm').checked = false
+      document.getElementById('compBalanceWarning').style.display = 'none'
+      document.getElementById('compBalanceConfirm').checked = false
       document.getElementById('submitReqBtn').disabled = false
       document.getElementById('requestModal').classList.add('open')
+      // Verificar saldo si tipo ya es compensatorio
+      checkCompBalance()
     }
 
     function closeRequestModal() { document.getElementById('requestModal').classList.remove('open') }
@@ -368,6 +389,42 @@
         btn.disabled = false
       }
     }
+    async function checkCompBalance() {
+      const type  = document.getElementById('reqType').value
+      const start = document.getElementById('reqStart').value
+      const end   = document.getElementById('reqEnd').value
+      const warn  = document.getElementById('compBalanceWarning')
+      const detail = document.getElementById('compBalanceDetail')
+
+      // Solo aplica para tipo compensatorio
+      if (type !== 'compensatorio') {
+        warn.style.display = 'none'
+        document.getElementById('compBalanceConfirm').checked = false
+        updateReqSubmit()
+        return
+      }
+
+      const requested = calcDays(start, end)
+      const bal = await getCompensatoryBalance(profile.id)
+
+      if (bal.available >= requested) {
+        warn.style.display = 'none'
+        document.getElementById('compBalanceConfirm').checked = false
+        updateReqSubmit()
+        return
+      }
+
+      // Saldo insuficiente
+      if (bal.available <= 0) {
+        detail.innerHTML = `No tienes días compensatorios disponibles. Tienes <strong>${bal.earned}</strong> ganado${bal.earned !== 1 ? 's' : ''} (${bal.used > 0 ? bal.used + ' ya usados' : 'ninguno aún'}).`
+      } else {
+        detail.innerHTML = `Solicitas <strong>${requested} día${requested > 1 ? 's' : ''}</strong> pero solo tienes <strong>${bal.available}</strong> disponible${bal.available !== 1 ? 's' : ''} (${bal.earned} ganados · ${bal.used} usados).`
+      }
+      warn.style.display = 'block'
+      document.getElementById('compBalanceConfirm').checked = false
+      updateReqSubmit()
+    }
+
     function closeReviewModal() { document.getElementById('reviewModal').classList.remove('open') }
 
     function calcDays(start, end) {
@@ -377,7 +434,7 @@
       return Math.max(0, Math.round((e - s) / 86400000) + 1)
     }
 
-    // Live days preview + overlap check
+    // Live days preview + overlap check + comp balance check
     ;['reqStart', 'reqEnd'].forEach(id => {
       document.getElementById(id)?.addEventListener('change', () => {
         const s = document.getElementById('reqStart').value
@@ -385,7 +442,12 @@
         const d = calcDays(s, e)
         document.getElementById('daysPreview').textContent = d > 0 ? `${d} día${d > 1 ? 's' : ''}` : ''
         if (s && e && e >= s) checkOverlap()
+        checkCompBalance()
       })
+    })
+    // Cuando cambia el tipo, re-verificar saldo compensatorio
+    document.getElementById('reqType')?.addEventListener('change', () => {
+      checkCompBalance()
     })
 
     async function submitRequest() {

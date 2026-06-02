@@ -210,6 +210,33 @@ function workedLabel(record) {
   return `${Math.floor(mins/60)}h ${Math.round(mins%60)}m`
 }
 
+// Días compensatorios disponibles de un empleado
+// earned  = floor(total_horas_HH.EE._aprobadas / 8)
+// used    = suma de días de permisos compensatorios aprobados
+// available = earned − used
+async function getCompensatoryBalance(employeeId) {
+  const [{ data: ot }, { data: comp }] = await Promise.all([
+    sb.from('overtime_records')
+      .select('hours')
+      .eq('employee_id', employeeId)
+      .eq('status', 'aprobado'),
+    sb.from('time_off_requests')
+      .select('start_date, end_date')
+      .eq('employee_id', employeeId)
+      .eq('type', 'compensatorio')
+      .eq('status', 'aprobado')
+  ])
+  const earned = Math.floor(
+    (ot || []).reduce((s, r) => s + Number(r.hours), 0) / 8
+  )
+  const used = (comp || []).reduce((sum, r) => {
+    return sum + Math.max(1,
+      Math.round((new Date(r.end_date + 'T12:00:00') - new Date(r.start_date + 'T12:00:00')) / 86400000) + 1
+    )
+  }, 0)
+  return { earned, used, available: earned - used }
+}
+
 function getWeekDates(baseDate) {
   const d = new Date(baseDate + 'T12:00:00')
   const day = d.getDay()

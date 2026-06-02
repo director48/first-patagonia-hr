@@ -302,7 +302,7 @@
       }).join('')
     }
 
-    function openReview(id) {
+    async function openReview(id) {
       const rec = recordCache[id]
       if (!rec) return
       const type = rec.recordType
@@ -313,6 +313,19 @@
       if (type === 'dl') {
         const days = Math.max(1, Math.round((new Date(rec.end_date+'T12:00:00') - new Date(rec.start_date+'T12:00:00')) / 86400000) + 1)
         info = `<strong>${name}</strong> · ${typeLabel(rec.type)}<br>${formatDate(rec.start_date)} al ${formatDate(rec.end_date)} (${days} día${days>1?'s':''})<br>${rec.reason ? `<em>${rec.reason}</em>` : ''}`
+
+        // Si es compensatorio, mostrar saldo del empleado
+        if (rec.type === 'compensatorio' && rec.employee_id) {
+          const bal = await getCompensatoryBalance(rec.employee_id)
+          const remaining = bal.available - days  // tras aprobar
+          const balColor  = bal.available >= days ? 'var(--teal)' : 'var(--red)'
+          const balIcon   = bal.available >= days ? '✓' : '⚠'
+          info += `<div style="margin-top:.6rem;padding:.5rem .75rem;background:var(--bg);border-radius:5px;font-size:.8rem;border-left:3px solid ${balColor}">
+            ${balIcon} Saldo compensatorio: <strong style="color:${balColor}">${bal.available} disponible${bal.available !== 1 ? 's' : ''}</strong>
+            <span style="color:var(--t2)"> (${bal.earned} ganados · ${bal.used} usados)</span>
+            ${bal.available < days ? `<br><span style="color:var(--red)">Aprobar dejaría el saldo en ${remaining} días</span>` : `<br><span style="color:var(--t2)">Tras aprobar quedarán ${remaining} días</span>`}
+          </div>`
+        }
       } else {
         info = `<strong>${name}</strong> · ${formatDate(rec.date)}<br><strong>${rec.hours}h</strong>${rec.reason ? ` · ${rec.reason}` : ''}`
       }

@@ -58,7 +58,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-value" id="statDias">—</div>
-              <div class="stat-label">Días compensatorios</div>
+              <div class="stat-label" id="statDiasLabel">Días compensatorios</div>
             </div>
           </div>
           <div class="stat-card">
@@ -272,11 +272,20 @@
       const he = (ot || []).reduce((s, r) => s + Number(r.hours), 0)
       document.getElementById('statHE').textContent = he.toFixed(1) + 'h'
 
-      // Días compensatorios: total HH.EE. aprobadas (todo el tiempo) / 8
-      const { data: otAll } = await sb.from('overtime_records')
-        .select('hours').eq('employee_id', profile.id).eq('status', 'aprobado')
-      const totalHEAll = (otAll || []).reduce((s, r) => s + Number(r.hours), 0)
-      document.getElementById('statDias').textContent = Math.floor(totalHEAll / 8)
+      // Días compensatorios: disponibles = ganados − usados
+      const compBal = await getCompensatoryBalance(profile.id)
+      const diasEl    = document.getElementById('statDias')
+      const diasLabel = document.getElementById('statDiasLabel')
+      diasEl.textContent = Math.max(0, compBal.available)
+      if (compBal.available <= 0 && compBal.earned > 0) {
+        diasEl.style.color = 'var(--red)'
+        diasLabel.innerHTML = `Días compensatorios<br><span style="font-size:.7rem;color:var(--t2);font-weight:400">${compBal.earned} ganados · ${compBal.used} usados</span>`
+      } else if (compBal.used > 0) {
+        diasLabel.innerHTML = `Días compensatorios<br><span style="font-size:.7rem;color:var(--t2);font-weight:400">${compBal.earned} ganados · ${compBal.used} usados</span>`
+      } else {
+        diasLabel.textContent = 'Días compensatorios'
+        diasEl.style.color = ''
+      }
 
       // Último pago
       const lastPay = pays?.[0]
