@@ -481,7 +481,11 @@
         payload.shift_end   = null
       }
 
+      const saveBtn = document.querySelector('#shiftModal .btn--primary')
+      if (saveBtn) saveBtn.disabled = true
+
       const { error } = await sb.from('schedules').upsert(payload, { onConflict: 'employee_id,date' })
+      if (saveBtn) saveBtn.disabled = false
       if (error) { showToast('Error al guardar', 'error'); return }
       showToast(dayType === 'libre' ? 'Día libre asignado ✓' : 'Turno guardado ✓', 'success')
       closeShiftModal()
@@ -491,7 +495,11 @@
     async function deleteShift() {
       const id = document.getElementById('shiftId').value
       if (!id) return
+      if (!confirm('¿Eliminar este turno? Esta acción no se puede deshacer.')) return
+      const delBtn = document.getElementById('deleteShiftBtn')
+      if (delBtn) delBtn.disabled = true
       const { error } = await sb.from('schedules').delete().eq('id', id)
+      if (delBtn) delBtn.disabled = false
       if (error) { showToast('Error al eliminar', 'error'); return }
       showToast('Turno eliminado', 'success')
       closeShiftModal()

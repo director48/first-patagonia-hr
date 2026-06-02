@@ -283,8 +283,12 @@
         return
       }
 
+      const heCache = {}
+      data.forEach(r => { heCache[r.id] = r })
+      // Guardamos en window para acceso desde onclick
+      window._hePendingCache = heCache
+
       tbody.innerHTML = data.map(r => {
-        const info = `<strong>${r.profiles?.full_name}</strong> — ${formatDate(r.date)}<br>${r.hours}h · <em>${r.reason}</em>`
         return `
           <tr>
             <td><strong>${r.profiles?.full_name || '—'}</strong></td>
@@ -293,13 +297,20 @@
             <td>${r.reason || '<span class="text-muted">—</span>'}</td>
             <td>
               <div class="flex-center gap-1">
-                <button class="btn btn--success btn--sm" onclick='openReviewModal("${r.id}", \`${info.replace(/`/g,"'")}\`)'>Aprobar</button>
-                <button class="btn btn--danger btn--sm" onclick='openReviewModal("${r.id}", \`${info.replace(/`/g,"'")}\`)'>Rechazar</button>
+                <button class="btn btn--success btn--sm" onclick="openHEReview('${r.id}')">Aprobar</button>
+                <button class="btn btn--danger btn--sm" onclick="openHEReview('${r.id}')">Rechazar</button>
               </div>
             </td>
           </tr>
         `
       }).join('')
+    }
+
+    function openHEReview(id) {
+      const r = window._hePendingCache?.[id]
+      if (!r) return
+      const info = `<strong>${r.profiles?.full_name || '—'}</strong> — ${formatDate(r.date)}<br>${r.hours}h · ${r.reason || ''}`
+      openReviewModal(id, info)
     }
 
     async function loadHistory() {

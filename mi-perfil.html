@@ -127,15 +127,15 @@
           <!-- Solicitudes rápidas -->
           <div class="card">
             <div class="card-header">
-              <span class="card-title">Mis solicitudes</span>
+              <span class="card-title">Mis permisos</span>
               <a href="dias-libres.html" class="btn btn--ghost btn--sm">Ver todo</a>
             </div>
             <div class="card-body">
               <!-- Quick actions -->
               <div class="flex-center gap-1 mb-2" style="flex-wrap:wrap">
-                <a href="dias-libres.html" class="btn btn--secondary btn--sm">
+                <button class="btn btn--secondary btn--sm" onclick="document.getElementById('quickDLModal').classList.add('open')">
                   🌴 Solicitar permiso
-                </a>
+                </button>
                 <a href="horas-extras.html" class="btn btn--secondary btn--sm">
                   ⏱ Registrar HH.EE.
                 </a>
