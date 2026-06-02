@@ -370,6 +370,10 @@
     <div class="clock-status-line" id="actionStatus"></div>
     <button class="btn-main" id="actionBtn" onclick="doClock()"></button>
     <button class="btn-main btn-cancel" onclick="cancelAction()">Cancelar</button>
+    <!-- Aviso de inactividad -->
+    <div id="idleWarning" style="display:none;position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:.65rem 1.5rem;font-size:.82rem;color:rgba(255,255,255,.5);letter-spacing:.04em;text-align:center">
+      Volviendo al inicio en <strong id="idleCount" style="color:rgba(255,255,255,.8)">10</strong>s...
+    </div>
   </div>
 
   <!-- ─── SUCCESS ─── -->
@@ -428,9 +432,53 @@
   <script>
     let currentProfile  = null
     let clockRecord     = null
-    let currentSchedule = null   // turno asignado hoy
+    let currentSchedule = null
     let countdownTimer  = null
-    let pendingClockOut = null   // { now, needsReview, deviationType }
+    let pendingClockOut = null
+    let idleTimer       = null
+    let idleInterval    = null
+    const IDLE_TIMEOUT  = 30   // segundos hasta auto-logout
+    const IDLE_WARNING  = 20   // segundos hasta mostrar aviso
+
+    // ── Auto-logout por inactividad ────────────────────────────
+    function startIdleTimer() {
+      stopIdleTimer()
+      let remaining = IDLE_TIMEOUT
+      const warning = document.getElementById('idleWarning')
+      const count   = document.getElementById('idleCount')
+
+      idleInterval = setInterval(() => {
+        remaining--
+        const sinceWarning = IDLE_TIMEOUT - remaining
+        if (remaining <= IDLE_TIMEOUT - IDLE_WARNING) {
+          warning.style.display = 'block'
+          count.textContent = remaining
+        }
+        if (remaining <= 0) {
+          stopIdleTimer()
+          cancelAction()
+        }
+      }, 1000)
+    }
+
+    function stopIdleTimer() {
+      clearInterval(idleInterval)
+      idleInterval = null
+      const warning = document.getElementById('idleWarning')
+      if (warning) warning.style.display = 'none'
+    }
+
+    function resetIdleTimer() {
+      // Solo activo en pantalla de acción o motivo
+      const activeState = document.querySelector('.state.active')?.id
+      if (activeState === 'state-action' || activeState === 'state-reason') {
+        startIdleTimer()
+      }
+    }
+
+    // Cualquier toque o clic reinicia el timer
+    document.addEventListener('touchstart', resetIdleTimer, { passive: true })
+    document.addEventListener('mousedown', resetIdleTimer)
 
     // ── Reglas de horas ───────────────────────────────────────
     // < turno: cuenta minutos exactos
@@ -454,6 +502,12 @@
     function showState(id) {
       document.querySelectorAll('.state').forEach(s => s.classList.remove('active'))
       document.getElementById(id).classList.add('active')
+      // Activar idle timer solo en pantallas donde el empleado debe actuar
+      if (id === 'state-action' || id === 'state-reason') {
+        startIdleTimer()
+      } else {
+        stopIdleTimer()
+      }
     }
 
     // ── Login ──────────────────────────────────────────────────
@@ -727,6 +781,7 @@
 
     // ── Reset ──────────────────────────────────────────────────
     function reset() {
+      stopIdleTimer()
       clearInterval(countdownTimer)
       currentProfile = null
       clockRecord    = null
