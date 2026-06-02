@@ -32,8 +32,25 @@
       </form>
 
       <p class="text-muted text-sm mt-3" style="text-align:center">
-        ¿Problemas para ingresar? Contacta a tu administrador.
+        <button type="button" onclick="showReset()" style="background:none;border:none;color:var(--t2);font-size:.82rem;cursor:pointer;text-decoration:underline;font-family:var(--font-sans)">
+          ¿Olvidaste tu contraseña?
+        </button>
       </p>
+    </div>
+
+    <!-- Panel recuperar contraseña -->
+    <div class="login-card" id="resetCard" style="display:none;margin-top:1rem">
+      <div style="font-size:.9rem;font-weight:500;margin-bottom:1rem">Recuperar contraseña</div>
+      <div class="form-group">
+        <label for="resetEmail">Tu correo electrónico</label>
+        <input type="email" id="resetEmail" placeholder="nombre@firstpatagonia.cl" autocomplete="email">
+      </div>
+      <button class="btn btn--primary btn--full" id="resetBtn" onclick="sendReset()">
+        Enviar enlace de recuperación
+      </button>
+      <button type="button" onclick="showLogin()" style="background:none;border:none;color:var(--t2);font-size:.82rem;cursor:pointer;margin-top:.75rem;width:100%;font-family:var(--font-sans)">
+        ← Volver al inicio de sesión
+      </button>
     </div>
   </div>
 
@@ -65,6 +82,40 @@
         window.location.href = 'dashboard.html'
       }
     })
+
+    function showReset() {
+      document.querySelector('.login-card').style.display = 'none'
+      document.getElementById('resetCard').style.display = 'block'
+      document.getElementById('resetEmail').focus()
+    }
+
+    function showLogin() {
+      document.getElementById('resetCard').style.display = 'none'
+      document.querySelector('.login-card').style.display = 'block'
+    }
+
+    async function sendReset() {
+      const email = document.getElementById('resetEmail').value.trim()
+      if (!email) { toast('Ingresa tu correo', 'error'); return }
+
+      const btn = document.getElementById('resetBtn')
+      btn.disabled = true
+      btn.textContent = 'Enviando...'
+
+      const { error } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/login.html'
+      })
+
+      btn.disabled = false
+      btn.textContent = 'Enviar enlace de recuperación'
+
+      if (error) {
+        toast('Error al enviar. Verifica el correo ingresado.', 'error')
+      } else {
+        toast('Enlace enviado ✓ Revisa tu correo', 'success')
+        setTimeout(showLogin, 2000)
+      }
+    }
 
     function toast(msg, type = '') {
       let c = document.getElementById('toast-container')

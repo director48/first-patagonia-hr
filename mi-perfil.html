@@ -484,6 +484,26 @@
       const metaParts = [profile.position, profile.department, profile.phone].filter(Boolean)
       document.getElementById('profilePosition').textContent = metaParts.join(' · ')
 
+      // Mostrar tarjeta de saldo de rol si es distinto de cero
+      const balance = profile.day_balance ?? 0
+      if (balance !== 0) {
+        const card = document.getElementById('statBalanceCard')
+        card.style.display = ''
+        const icon = document.getElementById('statBalanceIcon')
+        const val  = document.getElementById('statBalance')
+        const lbl  = document.getElementById('statBalanceLabel')
+        if (balance > 0) {
+          icon.className  = 'stat-icon stat-icon--red'
+          val.textContent = `${balance} día${balance > 1 ? 's' : ''}`
+          lbl.textContent = 'Debes al hotel'
+          val.style.color = 'var(--red)'
+        } else {
+          icon.className  = 'stat-icon stat-icon--teal'
+          val.textContent = `${Math.abs(balance)} día${Math.abs(balance) > 1 ? 's' : ''}`
+          lbl.textContent = 'El hotel te debe'
+        }
+      }
+
       // Wire overlap detection for the quick-permiso modal
       document.getElementById('dlStart').addEventListener('change', checkDLOverlap)
       document.getElementById('dlEnd').addEventListener('change', checkDLOverlap)

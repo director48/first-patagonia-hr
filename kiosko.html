@@ -585,6 +585,16 @@
 
       const btn = document.getElementById('actionBtn')
 
+      // Si hoy es día libre asignado → no permitir fichaje
+      if (currentSchedule?.day_type === 'libre') {
+        document.getElementById('actionStatus').innerHTML = '🟢 Día libre asignado hoy'
+        btn.textContent = 'No hay fichaje en días libres'
+        btn.className   = 'btn-main btn-cancel'
+        btn.disabled    = true
+        showState('state-action')
+        return
+      }
+
       if (!clockRecord || !clockRecord.clock_in) {
         document.getElementById('actionStatus').innerHTML = 'Sin registrar hoy · Turno pendiente'
         btn.textContent  = 'Registrar Entrada'

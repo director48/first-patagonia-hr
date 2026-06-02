@@ -174,12 +174,9 @@
       const isAdmin = p.role === 'admin'
       const firstOfMonth = todayStr.slice(0, 7) + '-01'
 
-      // Días compensatorios: total HH.EE. aprobadas (todo el tiempo) / 8
-      const { data: otAll } = await sb.from('overtime_records')
-        .select('hours').eq('employee_id', p.id).eq('status', 'aprobado')
-      const totalHEAprobadas = (otAll || []).reduce((s, r) => s + Number(r.hours), 0)
-      const diasComp = Math.floor(totalHEAprobadas / 8)
-      document.getElementById('statDias').textContent = diasComp
+      // Días compensatorios disponibles (ganados − usados)
+      const compBal = await getCompensatoryBalance(p.id)
+      document.getElementById('statDias').textContent = Math.max(0, compBal.available)
 
       const { data: ot } = await sb.from('overtime_records')
         .select('hours').eq('employee_id', p.id)

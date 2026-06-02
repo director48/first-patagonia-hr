@@ -197,6 +197,7 @@
 
     function openLogModal() {
       document.getElementById('otDate').value = today()
+      document.getElementById('otDate').max   = today()   // no fechas futuras
       document.getElementById('otHours').value = ''
       document.getElementById('otReason').value = ''
       document.getElementById('logModal').classList.add('open')
@@ -211,8 +212,24 @@
       const reason = document.getElementById('otReason').value
 
       if (!date) { showToast('Selecciona una fecha', 'error'); return }
+      if (date > today()) { showToast('No puedes registrar horas extras para fechas futuras', 'error'); return }
       if (!hours || hours <= 0 || hours > 12) { showToast('Ingresa entre 0.5 y 12 horas', 'error'); return }
       if (!reason.trim()) { showToast('Indica el motivo', 'error'); return }
+
+      // Verificar duplicado para este día
+      const { data: existing } = await sb.from('overtime_records')
+        .select('id, status')
+        .eq('employee_id', profile.id)
+        .eq('date', date)
+        .maybeSingle()
+
+      if (existing) {
+        const statusMsg = existing.status === 'pendiente' ? 'pendiente de aprobación'
+          : existing.status === 'aprobado' ? 'ya aprobado'
+          : 'rechazado'
+        showToast(`Ya hay un registro de HH.EE. para ese día (${statusMsg})`, 'error')
+        return
+      }
 
       const { error } = await sb.from('overtime_records').insert({
         employee_id: profile.id, date, hours, reason, status: 'pendiente'

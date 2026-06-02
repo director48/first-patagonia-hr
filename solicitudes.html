@@ -184,6 +184,38 @@
     </div>
   </div>
 
+  <!-- Modal corregir fichaje (sin salida registrada) -->
+  <div class="modal-overlay" id="clockEditModal">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-header">
+        <span class="modal-title">Corregir fichaje</span>
+        <button class="btn btn--ghost btn--sm" onclick="closeClockEdit()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="clockEditId">
+        <div style="background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);border-radius:6px;padding:.75rem 1rem;margin-bottom:1.2rem;font-size:.84rem;color:var(--red)">
+          ⚠ Este empleado no registró su salida. Ingresa la hora correcta de salida.
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Entrada registrada</label>
+            <input type="time" id="clockEditIn" readonly style="background:var(--bg)">
+          </div>
+          <div class="form-group">
+            <label>Hora de salida correcta</label>
+            <input type="time" id="clockEditOut">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--secondary" onclick="closeClockEdit()">Cancelar</button>
+        <button class="btn btn--primary" onclick="saveClockEdit()">Guardar corrección</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/client.js"></script>
@@ -494,6 +526,40 @@
       const { error } = await sb.from('clock_records').update({ needs_review: false }).eq('id', id)
       if (error) { showToast('Error', 'error'); return }
       showToast('Revisado ✓', 'success')
+      loadReviewQueue()
+      loadStats()
+    }
+
+    // ── Corrección de fichaje ──────────────────────────────────
+    function openClockEdit(recordId, clockInIso) {
+      document.getElementById('clockEditId').value  = recordId
+      document.getElementById('clockEditIn').value  = new Date(clockInIso).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+      document.getElementById('clockEditOut').value = ''
+      document.getElementById('clockEditModal').classList.add('open')
+    }
+
+    function closeClockEdit() { document.getElementById('clockEditModal').classList.remove('open') }
+
+    async function saveClockEdit() {
+      const id      = document.getElementById('clockEditId').value
+      const outTime = document.getElementById('clockEditOut').value
+      if (!outTime) { showToast('Ingresa la hora de salida', 'error'); return }
+
+      const { data: rec } = await sb.from('clock_records').select('date, clock_in').eq('id', id).single()
+      if (!rec) { showToast('Registro no encontrado', 'error'); return }
+
+      const clockOut = new Date(`${rec.date}T${outTime}:00`)
+      const clockIn  = new Date(rec.clock_in)
+      if (clockOut <= clockIn) { showToast('La salida debe ser posterior a la entrada', 'error'); return }
+
+      const { error } = await sb.from('clock_records').update({
+        clock_out:    clockOut.toISOString(),
+        needs_review: false
+      }).eq('id', id)
+
+      if (error) { showToast('Error al guardar', 'error'); return }
+      showToast('Fichaje corregido ✓', 'success')
+      closeClockEdit()
       loadReviewQueue()
       loadStats()
     }
