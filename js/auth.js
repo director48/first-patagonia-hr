@@ -156,7 +156,16 @@ function statusBadge(status) {
 }
 
 function typeLabel(type) {
-  return { vacaciones: 'Vacaciones', licencia_medica: 'Lic. Médica', permiso_administrativo: 'Permiso Admin.', otro: 'Otro' }[type] || type
+  return {
+    permiso_medico:       'Permiso médico',
+    permiso_personal:     'Permiso personal',
+    compensatorio:        'Día compensatorio',
+    // Legado (registros anteriores)
+    vacaciones:           'Vacaciones',
+    licencia_medica:      'Lic. Médica',
+    permiso_administrativo: 'Permiso Admin.',
+    otro:                 'Otro'
+  }[type] || type
 }
 
 function today() {

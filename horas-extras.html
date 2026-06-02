@@ -215,7 +215,7 @@
       if (!reason.trim()) { showToast('Indica el motivo', 'error'); return }
 
       const { error } = await sb.from('overtime_records').insert({
-        employee_id: profile.id, date, hours, reason
+        employee_id: profile.id, date, hours, reason, status: 'pendiente'
       })
 
       if (error) { showToast('Error al registrar', 'error'); return }
