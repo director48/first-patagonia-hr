@@ -789,10 +789,24 @@
       // Actualizar saldo
       const sel = document.getElementById('rotEmp')
       const currentBalance = parseInt(sel.selectedOptions[0]?.dataset.balance ?? 0)
-      const newBalance = currentBalance + (work - ROL_BASE) * ciclos
+      const delta      = (work - ROL_BASE) * ciclos
+      const newBalance = currentBalance + delta
       await sb.from('profiles').update({ day_balance: newBalance }).eq('id', empId)
       const emp = employees.find(e => e.id === empId)
       if (emp) emp.day_balance = newBalance
+
+      // Log del cambio de saldo (solo si hubo cambio)
+      if (delta !== 0) {
+        const lastDate   = records[records.length - 1]?.date || start
+        const cycleNote  = ciclos > 1 ? ` · ${ciclos} ciclos` : ''
+        await sb.from('day_balance_log').insert({
+          employee_id:   empId,
+          change:        delta,
+          reason:        `Rotación ${work}×${off}${cycleNote} · ${formatDate(start)} al ${formatDate(lastDate)}`,
+          balance_after: newBalance,
+          created_by:    profile.id
+        })
+      }
 
       showToast(`${records.filter(r=>r.day_type==='turno').length} turnos generados ✓`, 'success')
       btn.disabled = false
