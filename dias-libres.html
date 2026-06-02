@@ -173,10 +173,19 @@
           <textarea id="reqReason" placeholder="Describe brevemente el motivo de la solicitud..."></textarea>
         </div>
         <div id="daysPreview" class="text-muted text-sm" style="text-align:right"></div>
+        <!-- Aviso de solapamiento -->
+        <div id="overlapWarning" style="display:none;margin-top:.75rem;background:rgba(217,119,6,.08);border:1px solid rgba(217,119,6,.35);border-radius:6px;padding:.75rem 1rem;font-size:.83rem;line-height:1.5">
+          <strong style="color:var(--amber)">⚠ Permiso solapado</strong>
+          <div id="overlapDetail" style="color:var(--t2);margin-top:.25rem"></div>
+          <label style="display:flex;align-items:center;gap:.5rem;margin-top:.6rem;cursor:pointer;color:var(--t1)">
+            <input type="checkbox" id="overlapConfirm" onchange="document.getElementById('submitReqBtn').disabled = !this.checked">
+            Entiendo el solapamiento y quiero enviar igual
+          </label>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn--secondary" onclick="closeRequestModal()">Cancelar</button>
-        <button class="btn btn--primary" onclick="submitRequest()">Enviar solicitud</button>
+        <button class="btn btn--primary" id="submitReqBtn" onclick="submitRequest()">Enviar solicitud</button>
       </div>
     </div>
   </div>
@@ -322,10 +331,43 @@
       document.getElementById('reqEnd').value = today
       document.getElementById('reqReason').value = ''
       document.getElementById('daysPreview').textContent = '1 día'
+      document.getElementById('overlapWarning').style.display = 'none'
+      document.getElementById('overlapConfirm').checked = false
+      document.getElementById('submitReqBtn').disabled = false
       document.getElementById('requestModal').classList.add('open')
     }
 
     function closeRequestModal() { document.getElementById('requestModal').classList.remove('open') }
+
+    async function checkOverlap() {
+      const start = document.getElementById('reqStart').value
+      const end   = document.getElementById('reqEnd').value
+      if (!start || !end || end < start) return
+
+      const { data } = await sb.from('time_off_requests')
+        .select('start_date, end_date, type, status')
+        .eq('employee_id', profile.id)
+        .in('status', ['aprobado', 'pendiente'])
+        .lte('start_date', end)
+        .gte('end_date', start)
+
+      const warning = document.getElementById('overlapWarning')
+      const detail  = document.getElementById('overlapDetail')
+      const confirm = document.getElementById('overlapConfirm')
+      const btn     = document.getElementById('submitReqBtn')
+
+      if (data?.length) {
+        const r = data[0]
+        const statusLabel = r.status === 'aprobado' ? 'aprobado' : 'pendiente de aprobación'
+        detail.innerHTML = `Ya tienes un permiso <strong>${statusLabel}</strong> del <strong>${formatDate(r.start_date)}</strong> al <strong>${formatDate(r.end_date)}</strong> que se cruza con estas fechas.`
+        warning.style.display = 'block'
+        confirm.checked = false
+        btn.disabled = true
+      } else {
+        warning.style.display = 'none'
+        btn.disabled = false
+      }
+    }
     function closeReviewModal() { document.getElementById('reviewModal').classList.remove('open') }
 
     function calcDays(start, end) {
@@ -335,13 +377,14 @@
       return Math.max(0, Math.round((e - s) / 86400000) + 1)
     }
 
-    // Live days preview
+    // Live days preview + overlap check
     ;['reqStart', 'reqEnd'].forEach(id => {
       document.getElementById(id)?.addEventListener('change', () => {
         const s = document.getElementById('reqStart').value
         const e = document.getElementById('reqEnd').value
         const d = calcDays(s, e)
         document.getElementById('daysPreview').textContent = d > 0 ? `${d} día${d > 1 ? 's' : ''}` : ''
+        if (s && e && e >= s) checkOverlap()
       })
     })
 

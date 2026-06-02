@@ -142,7 +142,7 @@
             <div class="card-body">
               <!-- Quick actions -->
               <div class="flex-center gap-1 mb-2" style="flex-wrap:wrap">
-                <button class="btn btn--secondary btn--sm" onclick="document.getElementById('quickDLModal').classList.add('open')">
+                <button class="btn btn--secondary btn--sm" onclick="openDLModal()">
                   🌴 Solicitar permiso
                 </button>
                 <a href="horas-extras.html" class="btn btn--secondary btn--sm">
@@ -197,10 +197,18 @@
           <label>Motivo (opcional)</label>
           <textarea id="dlReason" placeholder="Describe brevemente..."></textarea>
         </div>
+        <div id="dlOverlapWarning" style="display:none;margin-top:.75rem;background:rgba(217,119,6,.08);border:1px solid rgba(217,119,6,.35);border-radius:6px;padding:.75rem 1rem;font-size:.83rem;line-height:1.5">
+          <strong style="color:var(--amber)">⚠ Permiso solapado</strong>
+          <div id="dlOverlapDetail" style="color:var(--t2);margin-top:.25rem"></div>
+          <label style="display:flex;align-items:center;gap:.5rem;margin-top:.6rem;cursor:pointer">
+            <input type="checkbox" id="dlOverlapConfirm" onchange="document.getElementById('dlSubmitBtn').disabled = !this.checked">
+            Entiendo y quiero enviar igual
+          </label>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn--secondary" onclick="document.getElementById('quickDLModal').classList.remove('open')">Cancelar</button>
-        <button class="btn btn--primary" onclick="submitDL()">Enviar solicitud</button>
+        <button class="btn btn--primary" id="dlSubmitBtn" onclick="submitDL()">Enviar solicitud</button>
       </div>
     </div>
   </div>
@@ -383,13 +391,68 @@
       }).join('')
     }
 
-    async function submitDL() {
+    function openDLModal() {
+      // Reset fields
+      document.getElementById('dlStart').value  = today()
+      document.getElementById('dlEnd').value    = today()
+      document.getElementById('dlReason').value = ''
+      document.getElementById('dlType').value   = 'permiso_medico'
+      // Reset overlap warning
+      document.getElementById('dlOverlapWarning').style.display = 'none'
+      document.getElementById('dlOverlapConfirm').checked = false
+      document.getElementById('dlSubmitBtn').disabled = false
+      document.getElementById('quickDLModal').classList.add('open')
+      // Run overlap check for default dates
+      checkDLOverlap()
+    }
+
+    async function checkDLOverlap() {
       const start = document.getElementById('dlStart').value
       const end   = document.getElementById('dlEnd').value
-      const type  = document.getElementById('dlType').value
+      const warn  = document.getElementById('dlOverlapWarning')
+      const btn   = document.getElementById('dlSubmitBtn')
+
+      // Hide while rechecking
+      warn.style.display = 'none'
+      btn.disabled = false
+
+      if (!start || !end || !profile) return
+
+      const { data } = await sb.from('time_off_requests')
+        .select('start_date, end_date, type, status')
+        .eq('employee_id', profile.id)
+        .in('status', ['aprobado', 'pendiente'])
+        .lte('start_date', end)
+        .gte('end_date', start)
+
+      if (!data || data.length === 0) return
+
+      const detail = data.map(r =>
+        `${typeLabel(r.type)} (${formatDate(r.start_date)} – ${formatDate(r.end_date)}) · ${r.status}`
+      ).join('<br>')
+
+      document.getElementById('dlOverlapDetail').innerHTML = detail
+      warn.style.display = 'block'
+      document.getElementById('dlOverlapConfirm').checked = false
+      btn.disabled = true
+    }
+
+    async function submitDL() {
+      const start  = document.getElementById('dlStart').value
+      const end    = document.getElementById('dlEnd').value
+      const type   = document.getElementById('dlType').value
       const reason = document.getElementById('dlReason').value
+
       if (!start || !end) { showToast('Selecciona las fechas', 'error'); return }
-      if (end < start) { showToast('La fecha fin debe ser igual o posterior al inicio', 'error'); return }
+      if (end < start)    { showToast('La fecha fin debe ser igual o posterior al inicio', 'error'); return }
+
+      // Block if overlap is visible but not confirmed
+      const warn    = document.getElementById('dlOverlapWarning')
+      const confirm = document.getElementById('dlOverlapConfirm')
+      if (warn.style.display !== 'none' && !confirm.checked) {
+        showToast('Confirma el solapamiento antes de enviar', 'warning'); return
+      }
+
       const { error } = await sb.from('time_off_requests').insert({
         employee_id: profile.id, start_date: start, end_date: end, type, reason
       })
@@ -411,6 +474,10 @@
 
       const metaParts = [profile.position, profile.department, profile.phone].filter(Boolean)
       document.getElementById('profilePosition').textContent = metaParts.join(' · ')
+
+      // Wire overlap detection for the quick-permiso modal
+      document.getElementById('dlStart').addEventListener('change', checkDLOverlap)
+      document.getElementById('dlEnd').addEventListener('change', checkDLOverlap)
 
       // Today's clock
       const { data: clock } = await sb.from('clock_records').select('*')
