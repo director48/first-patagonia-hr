@@ -101,6 +101,33 @@
           </div>
         </div>
 
+        <!-- Admin: toggle de vista -->
+        <div id="viewToggleBar" style="display:none;gap:.5rem;margin-bottom:1rem" class="flex-center">
+          <button class="btn btn--primary btn--sm" id="btnListView" onclick="setDLView('list')">Lista</button>
+          <button class="btn btn--secondary btn--sm" id="btnCalView" onclick="setDLView('calendar')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Calendario del equipo
+          </button>
+        </div>
+
+        <!-- Admin: calendario del equipo -->
+        <div id="teamCalSection" style="display:none">
+          <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem">
+            <button class="btn btn--secondary btn--sm" onclick="changeTeamCalMonth(-1)">← Anterior</button>
+            <span id="teamCalLabel" style="font-family:var(--font-serif);font-size:1.5rem;font-weight:400;flex:1;text-align:center"></span>
+            <button class="btn btn--secondary btn--sm" onclick="changeTeamCalMonth(1)">Siguiente →</button>
+          </div>
+          <div class="card">
+            <div style="padding:1rem">
+              <div id="teamCalLegend" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem;font-size:.75rem;min-height:1rem"></div>
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px">
+                ${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d=>`<div style="text-align:center;font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);padding:.3rem 0">${d}</div>`).join('')}
+              </div>
+              <div id="teamCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px"></div>
+            </div>
+          </div>
+        </div>
+
         <!-- Historial / todas -->
         <div class="page-header" id="historyHeader">
           <div>
@@ -424,6 +451,118 @@
       updateReqSubmit()
     }
 
+    // ── Calendario del equipo (admin) ─────────────────────────
+    let tcYear  = new Date().getFullYear()
+    let tcMonth = new Date().getMonth()
+    let tcReqs  = []
+    const TC_COLORS = ['#0891b2','#d97706','#16a34a','#dc2626','#7c3aed','#0f766e','#b45309','#be185d','#1d4ed8','#57534e']
+    let empColorMap = {}
+
+    function setDLView(v) {
+      const isList = v === 'list'
+      document.getElementById('btnListView').className = `btn btn--sm ${isList ? 'btn--primary' : 'btn--secondary'}`
+      document.getElementById('btnCalView').className  = `btn btn--sm ${isList ? 'btn--secondary' : 'btn--primary'}`
+      document.getElementById('historyHeader').style.display   = isList ? '' : 'none'
+      document.getElementById('filterTabs').style.display      = isList ? '' : 'none'
+      document.querySelector('#requestsTable').closest('.card').style.display = isList ? '' : 'none'
+      document.getElementById('teamCalSection').style.display  = isList ? 'none' : 'block'
+      if (!isList) renderTeamCal()
+    }
+
+    function changeTeamCalMonth(dir) {
+      tcMonth += dir
+      if (tcMonth > 11) { tcMonth = 0; tcYear++ }
+      if (tcMonth < 0)  { tcMonth = 11; tcYear-- }
+      fetchTeamCalMonth()
+    }
+
+    async function loadTeamCal() {
+      // Asignar colores por empleado
+      const { data: emps } = await sb.from('profiles').select('id, full_name').order('full_name')
+      ;(emps || []).forEach((e, i) => { empColorMap[e.id] = TC_COLORS[i % TC_COLORS.length] })
+      await fetchTeamCalMonth()
+    }
+
+    async function fetchTeamCalMonth() {
+      // Pedir un margen de ±7 días para capturar rangos que cruzan el mes
+      const padded = d => String(d).padStart(2, '0')
+      const firstDay = `${tcYear}-${padded(tcMonth+1)}-01`
+      const lastDay  = new Date(tcYear, tcMonth+1, 0).toISOString().split('T')[0]
+
+      const { data } = await sb.from('time_off_requests')
+        .select('employee_id, start_date, end_date, type, status, profiles!employee_id(full_name)')
+        .lte('start_date', lastDay)
+        .gte('end_date', firstDay)
+        .in('status', ['aprobado', 'pendiente'])
+        .order('start_date')
+
+      tcReqs = data || []
+      renderTeamCal()
+    }
+
+    function renderTeamCal() {
+      const padded = d => String(d).padStart(2, '0')
+      const label  = new Date(tcYear, tcMonth, 1).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
+      document.getElementById('teamCalLabel').textContent = label.charAt(0).toUpperCase() + label.slice(1)
+
+      // Construir mapa fecha → solicitudes dentro del mes
+      const dateMap = {}
+      tcReqs.forEach(r => {
+        let d = new Date(r.start_date + 'T12:00:00')
+        const end = new Date(r.end_date + 'T12:00:00')
+        while (d <= end) {
+          if (d.getFullYear() === tcYear && d.getMonth() === tcMonth) {
+            const key = `${tcYear}-${padded(tcMonth+1)}-${padded(d.getDate())}`
+            if (!dateMap[key]) dateMap[key] = []
+            dateMap[key].push(r)
+          }
+          d.setDate(d.getDate() + 1)
+        }
+      })
+
+      const daysInMonth = new Date(tcYear, tcMonth+1, 0).getDate()
+      const firstDow    = (new Date(tcYear, tcMonth, 1).getDay() + 6) % 7  // Lun=0
+      const todayStr    = new Date().toISOString().split('T')[0]
+
+      let html = ''
+      for (let i = 0; i < firstDow; i++) html += '<div style="min-height:64px"></div>'
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${tcYear}-${padded(tcMonth+1)}-${padded(day)}`
+        const reqs    = dateMap[dateStr] || []
+        const isToday = dateStr === todayStr
+
+        const chips = reqs.slice(0, 3).map(r => {
+          const color = empColorMap[r.employee_id] || '#666'
+          const name  = (r.profiles?.full_name || '').split(' ')[0]
+          const style = r.status === 'pendiente'
+            ? `border:1.5px dashed ${color};background:white;color:${color}`
+            : `background:${color};color:white`
+          return `<div style="${style};border-radius:3px;padding:.08rem .3rem;font-size:.6rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.profiles?.full_name} · ${typeLabel(r.type)}">${name}</div>`
+        }).join('')
+        const more = reqs.length > 3 ? `<div style="font-size:.58rem;color:var(--t2);padding-left:.2rem">+${reqs.length-3}</div>` : ''
+
+        html += `<div style="min-height:64px;border:${isToday?'2px solid var(--orange)':'1px solid var(--border)'};border-radius:5px;padding:.3rem;background:${reqs.length?'rgba(0,184,169,.04)':'white'}">
+          <div style="font-size:.72rem;font-weight:${isToday?600:400};color:${isToday?'var(--orange)':'var(--t2)'};margin-bottom:.2rem">${day}</div>
+          <div style="display:flex;flex-direction:column;gap:2px">${chips}${more}</div>
+        </div>`
+      }
+
+      document.getElementById('teamCalGrid').innerHTML = html
+
+      // Leyenda (empleados con solicitudes este mes)
+      const empIds = [...new Set(tcReqs.map(r => r.employee_id))]
+      document.getElementById('teamCalLegend').innerHTML = empIds.length
+        ? empIds.map(id => {
+            const r = tcReqs.find(x => x.employee_id === id)
+            return `<div style="display:flex;align-items:center;gap:.3rem">
+              <span style="width:10px;height:10px;border-radius:2px;background:${empColorMap[id]||'#666'};display:inline-block;flex-shrink:0"></span>
+              <span>${r?.profiles?.full_name || id}</span>
+            </div>`
+          }).join('')
+        : '<span style="color:var(--t2)">Sin permisos este mes</span>'
+    }
+
     function closeReviewModal() { document.getElementById('reviewModal').classList.remove('open') }
 
     function calcDays(start, end) {
@@ -607,7 +746,9 @@
         document.getElementById('empColHeader').classList.remove('hidden')
         document.getElementById('newRequestBtn').style.display = 'none'
         document.querySelector('.dl-admin-only').style.display = 'inline-flex'
+        document.getElementById('viewToggleBar').style.display = 'flex'
         loadPending()
+        loadTeamCal()
       } else {
         // Mostrar calendario solo para empleados
         document.getElementById('calendarSection').classList.remove('hidden')

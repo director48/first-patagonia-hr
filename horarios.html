@@ -7,6 +7,20 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    @media print {
+      .sidebar, .sidebar-overlay, .topbar, .week-nav,
+      #btnGenerarRotacion, #btnPrint, .card:last-child { display: none !important; }
+      .app-layout { display: block !important; }
+      .main { margin: 0 !important; }
+      .content { padding: 0 !important; }
+      #printHeader { display: block !important; }
+      .card { box-shadow: none !important; border: 1px solid #ccc !important; margin-bottom: .5rem !important; break-inside: avoid; }
+      .roster-wrap, .table-wrap { overflow: visible !important; }
+      .roster-table, table { font-size: 8.5pt !important; }
+      .roster-cell-inner { font-size: 8pt !important; }
+    }
+  </style>
 </head>
 <body>
   <div id="sidebarOverlay" class="sidebar-overlay"></div>
@@ -22,6 +36,10 @@
           <p id="topbarSub">Turnos semanales</p>
         </div>
         <div class="topbar-actions">
+          <button class="btn btn--secondary btn--sm hidden" id="btnPrint" onclick="window.print()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Imprimir
+          </button>
           <button class="btn btn--primary btn--sm hidden" id="btnGenerarRotacion" onclick="openRotacion()">
             ⚙ Generar rotación
           </button>
@@ -29,6 +47,12 @@
       </header>
 
       <main class="content">
+        <!-- Cabecera solo visible al imprimir -->
+        <div id="printHeader" style="display:none;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:2px solid #000">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:400">First Patagonia — Turnos del equipo</div>
+          <div id="printWeekLabel" style="font-size:.88rem;color:#555;margin-top:.2rem"></div>
+        </div>
+
         <!-- Navegación semana -->
         <div class="week-nav">
           <button class="btn btn--secondary btn--sm" onclick="changeWeek(-1)">
@@ -187,10 +211,16 @@
       </div>
       <div class="modal-body" style="max-height:80vh;overflow-y:auto">
 
-        <!-- Patrón -->
+        <!-- Empleados (selección múltiple) -->
         <div class="form-group">
-          <label>Empleado</label>
-          <select id="rotEmp" onchange="updateRotBalance()"></select>
+          <label>Empleados</label>
+          <div style="border:1px solid var(--border);border-radius:8px;max-height:148px;overflow-y:auto">
+            <label style="display:flex;align-items:center;gap:.5rem;padding:.45rem .75rem;cursor:pointer;font-size:.82rem;border-bottom:1px solid var(--border);background:var(--bg)">
+              <input type="checkbox" id="rotSelectAll" onchange="rotToggleAll(this)">
+              <strong>Seleccionar todos</strong>
+            </label>
+            <div id="rotEmpList"></div>
+          </div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -294,8 +324,10 @@
       const dates = getWeekDates(currentWeekBase)
       const first = new Date(dates[0] + 'T12:00:00')
       const last  = new Date(dates[6] + 'T12:00:00')
-      document.getElementById('weekLabel').textContent =
-        `${first.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })} — ${last.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })}`
+      const weekText = `${first.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })} — ${last.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })}`
+      document.getElementById('weekLabel').textContent = weekText
+      const ph = document.getElementById('printWeekLabel')
+      if (ph) ph.textContent = `Semana: ${weekText}`
 
       if (profile.role === 'admin') {
         await loadRoster(dates)
@@ -599,13 +631,35 @@
     let daySchedules = []   // [{ date, in, out, type }]
     const DAYS_ES_FULL = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
 
+    function rotToggleAll(el) {
+      document.querySelectorAll('.rot-emp-cb').forEach(cb => { cb.checked = el.checked })
+      updateRotBalance()
+    }
+
+    function getSelectedRotEmps() {
+      return [...document.querySelectorAll('.rot-emp-cb:checked')].map(cb => ({
+        id: cb.value, balance: parseInt(cb.dataset.balance ?? 0), name: cb.dataset.name
+      }))
+    }
+
     function openRotacion() {
-      const sel = document.getElementById('rotEmp')
-      sel.innerHTML = employees.map(e => `<option value="${e.id}" data-balance="${e.day_balance ?? 0}">${e.full_name}</option>`).join('')
+      const list = document.getElementById('rotEmpList')
+      list.innerHTML = employees.map(e => `
+        <label style="display:flex;align-items:center;gap:.5rem;padding:.35rem .75rem;cursor:pointer;font-size:.83rem">
+          <input type="checkbox" class="rot-emp-cb" value="${e.id}"
+                 data-balance="${e.day_balance ?? 0}" data-name="${e.full_name}"
+                 onchange="updateRotBalance()">
+          <span>${e.full_name}</span>
+          <span style="margin-left:auto;font-size:.75rem;color:${(e.day_balance??0)>0?'var(--red)':(e.day_balance??0)<0?'var(--teal)':'var(--t2)'}">
+            ${(e.day_balance??0)===0?'✓ A mano':(e.day_balance??0)>0?`Debe ${e.day_balance}d`:`+${Math.abs(e.day_balance??0)}d`}
+          </span>
+        </label>`).join('')
+      document.getElementById('rotSelectAll').checked = false
       document.getElementById('rotStart').value = today()
       document.getElementById('rotCiclos').value = '1'
       document.getElementById('rotWork').value = '11'
       document.getElementById('rotOff').value = '4'
+      document.getElementById('rotBalanceBox').innerHTML = ''
       buildDayList()
       document.getElementById('rotacionModal').classList.add('open')
     }
@@ -707,38 +761,48 @@
     function updateRotBalance() {
       const work   = parseInt(document.getElementById('rotWork').value) || 11
       const ciclos = parseInt(document.getElementById('rotCiclos').value) || 1
-      const sel    = document.getElementById('rotEmp')
-      const currentBalance = parseInt(sel.selectedOptions[0]?.dataset.balance ?? 0)
-      const diffPerCycle   = work - ROL_BASE
-      const totalDiff      = diffPerCycle * ciclos
-      const newBalance     = currentBalance + totalDiff
-
+      const off    = parseInt(document.getElementById('rotOff').value) || 4
+      const delta  = (work - ROL_BASE) * ciclos
+      const selected = getSelectedRotEmps()
       const box = document.getElementById('rotBalanceBox')
       if (!box) return
-      let color = 'rgba(0,0,0,.03)'; let border = 'var(--border)'; let msg = ''
 
-      if (diffPerCycle === 0) {
-        msg = `Ciclo normal (${work}×${document.getElementById('rotOff').value}). Saldo sin cambio.`
-      } else if (diffPerCycle < 0) {
-        msg = `Ciclo corto — empleado trabajará <strong>${work} días</strong>. Quedará debiendo <strong>${Math.abs(totalDiff)} día${Math.abs(totalDiff)>1?'s':''}</strong>.`
-        color = 'rgba(220,38,38,.06)'; border = 'var(--red)'
-      } else {
-        msg = `Ciclo largo — empleado trabajará <strong>${work} días</strong>. Devuelve <strong>${totalDiff} día${totalDiff>1?'s':''}</strong>.`
-        color = 'rgba(22,163,74,.06)'; border = '#16a34a'
+      if (!selected.length) {
+        box.style.cssText = 'border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;font-size:.85rem;background:rgba(0,0,0,.03);border:1px solid var(--border)'
+        box.innerHTML = '<span style="color:var(--t2)">Selecciona al menos un empleado</span>'
+        return
       }
 
-      const balText = newBalance === 0
-        ? `<strong style="color:var(--green)">Saldo resultante: ✓ A mano</strong>`
-        : newBalance > 0
-        ? `<strong style="color:var(--red)">Saldo resultante: debe ${newBalance} día${newBalance>1?'s':''}</strong>`
-        : `<strong style="color:var(--teal)">Saldo resultante: le deben ${Math.abs(newBalance)} día${Math.abs(newBalance)>1?'s':''}</strong>`
+      if (delta === 0) {
+        box.style.cssText = 'border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;font-size:.85rem;background:rgba(0,0,0,.03);border:1px solid var(--border)'
+        box.innerHTML = `Ciclo normal (${work}×${off}). Saldo sin cambio para <strong>${selected.length}</strong> empleado${selected.length>1?'s':''}.`
+        return
+      }
 
-      box.style.cssText = `border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;font-size:.85rem;line-height:1.6;background:${color};border:1px solid ${border}`
-      box.innerHTML = `${msg}<br>${balText}`
+      const rows = selected.map(e => {
+        const nb = e.balance + delta
+        const after = nb === 0 ? '<span style="color:var(--green)">✓ A mano</span>'
+          : nb > 0 ? `<span style="color:var(--red)">Debe ${nb} día${nb>1?'s':''}</span>`
+          : `<span style="color:var(--teal)">Le deben ${Math.abs(nb)} día${Math.abs(nb)>1?'s':''}</span>`
+        return `<div style="display:flex;justify-content:space-between;font-size:.82rem;padding:.12rem 0;border-bottom:1px solid rgba(0,0,0,.05)">
+          <span>${e.name}</span>${after}
+        </div>`
+      }).join('')
+
+      const header = delta < 0
+        ? `Ciclo corto (${work}×${off}) — quedan debiendo días:`
+        : `Ciclo largo (${work}×${off}) — devuelven días:`
+      const bg = delta < 0 ? 'rgba(220,38,38,.06)' : 'rgba(22,163,74,.06)'
+      const bd = delta < 0 ? 'var(--red)' : '#16a34a'
+
+      box.style.cssText = `border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;font-size:.85rem;line-height:1.6;background:${bg};border:1px solid ${bd}`
+      box.innerHTML = `<div style="font-weight:500;margin-bottom:.4rem">${header}</div>${rows}`
     }
 
     async function generarRotacion() {
-      const empId  = document.getElementById('rotEmp').value
+      const selected = getSelectedRotEmps()
+      if (!selected.length) { showToast('Selecciona al menos un empleado', 'error'); return }
+
       const start  = document.getElementById('rotStart').value
       const ciclos = parseInt(document.getElementById('rotCiclos').value) || 1
       const work   = parseInt(document.getElementById('rotWork').value) || 11
@@ -748,68 +812,59 @@
       if (!daySchedules.length) { showToast('Configura los días de trabajo', 'error'); return }
 
       const btn = document.getElementById('btnGenerar')
-      btn.disabled = true; btn.textContent = 'Generando...'
+      btn.disabled = true
 
-      const records = []
-      let current = new Date(start + 'T12:00:00')
+      const delta = (work - ROL_BASE) * ciclos
+      let totalShifts = 0
 
-      for (let c = 0; c < ciclos; c++) {
-        // Días de trabajo con horario individual
-        for (let w = 0; w < work; w++) {
-          const idx = c * work + w
-          const day = daySchedules[idx] || daySchedules[w % daySchedules.length]
-          records.push({
-            employee_id: empId,
-            date: current.toISOString().split('T')[0],
-            day_type: 'turno',
-            shift_start: day.in,
-            shift_end: day.out,
-            notes: '',
-            created_by: profile.id
-          })
-          current.setDate(current.getDate() + 1)
+      for (let ei = 0; ei < selected.length; ei++) {
+        const emp = selected[ei]
+        btn.textContent = `Generando ${ei+1}/${selected.length}...`
+
+        const records = []
+        let current = new Date(start + 'T12:00:00')   // reset por empleado
+
+        for (let c = 0; c < ciclos; c++) {
+          for (let w = 0; w < work; w++) {
+            const idx = c * work + w
+            const day = daySchedules[idx] || daySchedules[w % daySchedules.length]
+            records.push({ employee_id: emp.id, date: current.toISOString().split('T')[0],
+              day_type: 'turno', shift_start: day.in, shift_end: day.out, notes: '', created_by: profile.id })
+            current.setDate(current.getDate() + 1)
+          }
+          for (let o = 0; o < off; o++) {
+            records.push({ employee_id: emp.id, date: current.toISOString().split('T')[0],
+              day_type: 'libre', shift_start: null, shift_end: null, notes: '', created_by: profile.id })
+            current.setDate(current.getDate() + 1)
+          }
         }
-        // Días libres
-        for (let o = 0; o < off; o++) {
-          records.push({
-            employee_id: empId,
-            date: current.toISOString().split('T')[0],
-            day_type: 'libre',
-            shift_start: null, shift_end: null, notes: '', created_by: profile.id
+
+        // Upsert en lotes de 50
+        for (let i = 0; i < records.length; i += 50) {
+          const { error } = await sb.from('schedules').upsert(records.slice(i, i+50), { onConflict: 'employee_id,date' })
+          if (error) { showToast(`Error con ${emp.name}: ${error.message}`, 'error'); btn.disabled = false; btn.textContent = 'Generar turnos'; return }
+        }
+        totalShifts += records.filter(r => r.day_type === 'turno').length
+
+        // Actualizar saldo
+        const newBalance = emp.balance + delta
+        await sb.from('profiles').update({ day_balance: newBalance }).eq('id', emp.id)
+        const empObj = employees.find(e => e.id === emp.id)
+        if (empObj) empObj.day_balance = newBalance
+
+        // Log del cambio (solo si hubo cambio)
+        if (delta !== 0) {
+          const lastDate  = records[records.length - 1]?.date || start
+          const cycleNote = ciclos > 1 ? ` · ${ciclos} ciclos` : ''
+          await sb.from('day_balance_log').insert({
+            employee_id: emp.id, change: delta,
+            reason: `Rotación ${work}×${off}${cycleNote} · ${formatDate(start)} al ${formatDate(lastDate)}`,
+            balance_after: newBalance, created_by: profile.id
           })
-          current.setDate(current.getDate() + 1)
         }
       }
 
-      // Upsert en lotes de 50
-      for (let i = 0; i < records.length; i += 50) {
-        const { error } = await sb.from('schedules').upsert(records.slice(i, i+50), { onConflict: 'employee_id,date' })
-        if (error) { showToast('Error: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Generar turnos'; return }
-      }
-
-      // Actualizar saldo
-      const sel = document.getElementById('rotEmp')
-      const currentBalance = parseInt(sel.selectedOptions[0]?.dataset.balance ?? 0)
-      const delta      = (work - ROL_BASE) * ciclos
-      const newBalance = currentBalance + delta
-      await sb.from('profiles').update({ day_balance: newBalance }).eq('id', empId)
-      const emp = employees.find(e => e.id === empId)
-      if (emp) emp.day_balance = newBalance
-
-      // Log del cambio de saldo (solo si hubo cambio)
-      if (delta !== 0) {
-        const lastDate   = records[records.length - 1]?.date || start
-        const cycleNote  = ciclos > 1 ? ` · ${ciclos} ciclos` : ''
-        await sb.from('day_balance_log').insert({
-          employee_id:   empId,
-          change:        delta,
-          reason:        `Rotación ${work}×${off}${cycleNote} · ${formatDate(start)} al ${formatDate(lastDate)}`,
-          balance_after: newBalance,
-          created_by:    profile.id
-        })
-      }
-
-      showToast(`${records.filter(r=>r.day_type==='turno').length} turnos generados ✓`, 'success')
+      showToast(`${totalShifts} turnos generados para ${selected.length} empleado${selected.length>1?'s':''} ✓`, 'success')
       btn.disabled = false
       btn.textContent = 'Generar turnos'
       closeRotacion()
@@ -826,10 +881,9 @@
         document.getElementById('topbarSub').textContent = 'Grilla semanal de todos los empleados'
         document.getElementById('rosterSection').classList.remove('hidden')
         document.getElementById('btnGenerarRotacion').classList.remove('hidden')
+        document.getElementById('btnPrint').classList.remove('hidden')
         const { data } = await sb.from('profiles').select('*').order('full_name')
         employees = data || []
-        // Listener: actualizar balance en modal al cambiar empleado
-        document.getElementById('rotEmp')?.addEventListener('change', updateRotBalance)
         document.getElementById('rotCiclos')?.addEventListener('input', updateRotBalance)
       } else {
         document.getElementById('empSection').classList.remove('hidden')
