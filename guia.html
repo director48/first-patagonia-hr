@@ -310,6 +310,8 @@
 </div>
 
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/client.js"></script>
 <script>
 // ── DATA ────────────────────────────────────────────────────
 const SECTIONS = {
@@ -829,8 +831,25 @@ function demoSubmitOT() {
   setTimeout(() => { btn.textContent = 'Enviar para aprobación'; btn.style.background = ''; }, 2500)
 }
 
-// ── INIT ─────────────────────────────────────────────────────
-setRole('admin')
+// ── INIT — detectar rol del usuario ──────────────────────────
+;(async () => {
+  try {
+    const { data: { session } } = await sb.auth.getSession()
+    if (session?.user?.id) {
+      const { data: profile } = await sb.from('profiles')
+        .select('role').eq('id', session.user.id).single()
+
+      if (profile?.role !== 'admin') {
+        // Empleado: solo ve su propia guía, sin toggle
+        setRole('empleado')
+        document.querySelector('.role-toggle').style.display = 'none'
+        return
+      }
+    }
+  } catch (_) {}
+  // Admin o no autenticado: vista por defecto
+  setRole('admin')
+})()
 </script>
 </body>
 </html>
