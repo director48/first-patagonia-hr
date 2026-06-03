@@ -375,19 +375,18 @@
       const warning = document.getElementById('overlapWarning')
       const detail  = document.getElementById('overlapDetail')
       const confirm = document.getElementById('overlapConfirm')
-      const btn     = document.getElementById('submitReqBtn')
 
       if (data?.length) {
-        const r = data[0]
-        const statusLabel = r.status === 'aprobado' ? 'aprobado' : 'pendiente de aprobación'
-        detail.innerHTML = `Ya tienes un permiso <strong>${statusLabel}</strong> del <strong>${formatDate(r.start_date)}</strong> al <strong>${formatDate(r.end_date)}</strong> que se cruza con estas fechas.`
+        detail.innerHTML = data.map(r => {
+          const st = r.status === 'aprobado' ? 'aprobado' : 'pendiente'
+          return `<div style="padding:.1rem 0">· <strong>${typeLabel(r.type)}</strong> (${st}) · ${formatDate(r.start_date)} – ${formatDate(r.end_date)}</div>`
+        }).join('')
         warning.style.display = 'block'
         confirm.checked = false
-        btn.disabled = true
       } else {
         warning.style.display = 'none'
-        btn.disabled = false
       }
+      updateReqSubmit()   // siempre delega el estado del botón al coordinador
     }
     async function checkCompBalance() {
       const type  = document.getElementById('reqType').value

@@ -317,7 +317,9 @@
                 <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.07em;color:var(--t2)">${DAYS_ES[i]}</div>
                 <div style="font-size:1rem;font-weight:400;color:${isToday?'var(--orange)':'var(--t1)'};margin:.1rem 0">${dt.getDate()}</div>
                 ${s
-                  ? `<div style="font-size:.62rem;color:var(--teal);font-weight:500">${s.shift_start.slice(0,5)}</div><div style="font-size:.62rem;color:var(--teal)">${s.shift_end.slice(0,5)}</div>`
+                  ? `<div style="font-size:.62rem;color:var(--teal);font-weight:500">${s.shift_start.slice(0,5)}</div>
+                     <div style="font-size:.62rem;color:var(--teal)">${s.shift_end.slice(0,5)}</div>
+                     ${s.notes ? `<div style="font-size:.55rem;color:var(--t2);margin-top:.15rem;font-style:italic;line-height:1.2;overflow:hidden;max-width:100%;white-space:nowrap;text-overflow:ellipsis" title="${s.notes}">${s.notes}</div>` : ''}`
                   : `<div style="font-size:.62rem;color:rgba(0,0,0,.2);font-style:italic">libre</div>`
                 }
               </div>

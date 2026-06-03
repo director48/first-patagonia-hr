@@ -51,6 +51,8 @@ function renderSidebar(profile) {
     { href: 'solicitudes.html',   icon: iconSvg('clipboard-list'),   label: 'Solicitudes' },
     { href: 'pagos.html',         icon: iconSvg('credit-card'),      label: 'Pagos' },
     { href: 'empleados.html',     icon: iconSvg('users'),            label: 'Empleados' },
+    { section: 'Ayuda' },
+    { href: 'guia.html',          icon: iconSvg('book-open'),        label: 'Guía de uso' },
   ]
 
   const empLinks = [
@@ -60,6 +62,8 @@ function renderSidebar(profile) {
     { href: 'dias-libres.html',   icon: iconSvg('umbrella'),         label: 'Permisos' },
     { href: 'horas-extras.html',  icon: iconSvg('clock'),            label: 'Horas Extras' },
     { href: 'pagos.html',         icon: iconSvg('credit-card'),      label: 'Mis Pagos' },
+    { section: 'Ayuda' },
+    { href: 'guia.html',          icon: iconSvg('book-open'),        label: 'Guía de uso' },
   ]
 
   const links = isAdmin ? adminLinks : empLinks
@@ -123,6 +127,7 @@ function iconSvg(name, size = 17) {
     'user': '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
     'download': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
     'plus': '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+    'book-open': '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
   }
   const paths = icons[name] || ''
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`
