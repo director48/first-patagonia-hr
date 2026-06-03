@@ -325,6 +325,38 @@
       background: rgba(255,255,255,.1);
       margin: 1.5rem auto;
     }
+
+    /* ── PIN PAD ── */
+    .pin-dot {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.25);
+      background: transparent;
+      transition: background .15s, border-color .15s;
+    }
+    .pin-dot.filled {
+      background: var(--orange);
+      border-color: var(--orange);
+      transform: scale(1.1);
+    }
+    .pin-btn {
+      width: 100%; aspect-ratio: 1;
+      border-radius: 50%;
+      background: rgba(255,255,255,.08);
+      border: 1.5px solid rgba(255,255,255,.12);
+      color: var(--cream);
+      font-family: var(--sans);
+      font-size: clamp(1.4rem, 4vw, 1.8rem);
+      font-weight: 300;
+      letter-spacing: .04em;
+      cursor: pointer;
+      transition: background .12s, transform .1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .pin-btn:active {
+      background: rgba(232,82,26,.35);
+      transform: scale(.94);
+    }
   </style>
 </head>
 <body>
@@ -336,8 +368,47 @@
     <div class="global-date" id="globalDate"></div>
   </div>
 
-  <!-- ─── LOGIN ─── -->
-  <div class="state active" id="state-login" style="margin-top:7rem">
+  <!-- ─── PIN PAD (pantalla principal) ─── -->
+  <div class="state active" id="state-pin" style="margin-top:4rem;align-items:center">
+    <div class="logo-area" style="margin-bottom:1.5rem">
+      <div class="logo-dot"></div>
+      <div class="logo-name">First Patagonia</div>
+      <div class="logo-sub">Ingresa tu PIN</div>
+    </div>
+
+    <div id="pinError" class="error-msg" style="max-width:300px">PIN incorrecto. Intenta de nuevo.</div>
+
+    <!-- Indicador de dígitos -->
+    <div style="display:flex;gap:1rem;justify-content:center;margin-bottom:2rem">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+
+    <!-- Teclado numérico -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;max-width:300px;width:100%">
+      <button class="pin-btn" onclick="pinKey('1')">1</button>
+      <button class="pin-btn" onclick="pinKey('2')">2</button>
+      <button class="pin-btn" onclick="pinKey('3')">3</button>
+      <button class="pin-btn" onclick="pinKey('4')">4</button>
+      <button class="pin-btn" onclick="pinKey('5')">5</button>
+      <button class="pin-btn" onclick="pinKey('6')">6</button>
+      <button class="pin-btn" onclick="pinKey('7')">7</button>
+      <button class="pin-btn" onclick="pinKey('8')">8</button>
+      <button class="pin-btn" onclick="pinKey('9')">9</button>
+      <button class="pin-btn" onclick="pinClear()" style="font-size:1rem;letter-spacing:0">C</button>
+      <button class="pin-btn" onclick="pinKey('0')">0</button>
+      <button class="pin-btn" onclick="pinDelete()" style="font-size:1.2rem;letter-spacing:0">⌫</button>
+    </div>
+
+    <button onclick="showState('state-login')" style="background:none;border:none;color:rgba(255,255,255,.2);font-size:.72rem;cursor:pointer;letter-spacing:.08em;margin-top:2rem;text-decoration:underline">
+      Usar correo y contraseña
+    </button>
+  </div>
+
+  <!-- ─── LOGIN (fallback email/password) ─── -->
+  <div class="state" id="state-login" style="margin-top:6rem">
     <div class="logo-area">
       <div class="logo-dot"></div>
       <div class="logo-name">First Patagonia</div>
@@ -356,6 +427,9 @@
     </div>
 
     <button class="btn-main btn-acceder" id="loginBtn" onclick="doLogin()">Acceder</button>
+    <button onclick="showState('state-pin')" style="background:none;border:none;color:rgba(255,255,255,.25);font-size:.72rem;cursor:pointer;letter-spacing:.08em;margin-top:1rem;text-decoration:underline">
+      ← Volver al PIN
+    </button>
   </div>
 
   <!-- ─── LOADING ─── -->
@@ -470,12 +544,18 @@
     }
 
     function resetIdleTimer() {
-      // Solo activo en pantalla de acción o motivo
       const activeState = document.querySelector('.state.active')?.id
       if (activeState === 'state-action' || activeState === 'state-reason') {
         startIdleTimer()
       }
     }
+
+    // Teclado físico también activa el PIN pad
+    document.addEventListener('keydown', e => {
+      const active = document.querySelector('.state.active')?.id
+      if (active === 'state-pin' && e.key >= '0' && e.key <= '9') pinKey(e.key)
+      if (active === 'state-pin' && e.key === 'Backspace') pinDelete()
+    })
 
     // Cualquier toque o clic reinicia el timer
     document.addEventListener('touchstart', resetIdleTimer, { passive: true })
@@ -511,7 +591,72 @@
       }
     }
 
-    // ── Login ──────────────────────────────────────────────────
+    // ── PIN pad ─────────────────────────────────────────────────
+    let pinValue = ''
+
+    function pinKey(d) {
+      if (pinValue.length >= 4) return
+      document.getElementById('pinError')?.classList.remove('show')
+      pinValue += d
+      updatePinDots()
+      if (pinValue.length === 4) setTimeout(pinSubmit, 120)
+    }
+
+    function pinDelete() {
+      pinValue = pinValue.slice(0, -1)
+      updatePinDots()
+    }
+
+    function pinClear() {
+      pinValue = ''
+      updatePinDots()
+    }
+
+    function updatePinDots() {
+      for (let i = 0; i < 4; i++) {
+        document.getElementById('pd' + i)?.classList.toggle('filled', i < pinValue.length)
+      }
+    }
+
+    async function pinSubmit() {
+      if (pinValue.length !== 4) return
+      showState('state-loading')
+
+      const { data: prof } = await sb.from('profiles')
+        .select('*').eq('kiosk_pin', pinValue)
+        .eq('is_active', true).maybeSingle()
+
+      if (!prof) {
+        const { data: prof2 } = await sb.from('profiles')
+          .select('*').eq('kiosk_pin', pinValue)
+          .is('is_active', null).maybeSingle()
+        if (!prof2) {
+          pinValue = ''
+          updatePinDots()
+          document.getElementById('pinError').classList.add('show')
+          showState('state-pin')
+          return
+        }
+        currentProfile = prof2
+      } else {
+        currentProfile = prof
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0]
+      const [{ data: clock }, { data: sched }] = await Promise.all([
+        sb.from('clock_records').select('*').eq('employee_id', currentProfile.id).eq('date', todayStr).maybeSingle(),
+        sb.from('schedules').select('*').eq('employee_id', currentProfile.id).eq('date', todayStr).maybeSingle()
+      ])
+
+      clockRecord     = clock
+      currentSchedule = sched
+      pinValue = ''
+
+      if (clock?.clock_in && clock?.clock_out) showDone()
+      else showAction()
+    }
+
+    // ── Login (email/password fallback) ───────────────────────
     document.getElementById('inputPassword').addEventListener('keydown', e => {
       if (e.key === 'Enter') doLogin()
     })
@@ -596,7 +741,10 @@
       }
 
       if (!clockRecord || !clockRecord.clock_in) {
-        document.getElementById('actionStatus').innerHTML = 'Sin registrar hoy · Turno pendiente'
+        const shiftInfo = (currentSchedule?.day_type === 'turno' && currentSchedule?.shift_start)
+          ? `Turno: <span class="entrada-time">${currentSchedule.shift_start.slice(0,5)} – ${currentSchedule.shift_end.slice(0,5)}</span>`
+          : 'Sin turno asignado hoy'
+        document.getElementById('actionStatus').innerHTML = shiftInfo
         btn.textContent  = 'Registrar Entrada'
         btn.className    = 'btn-main btn-entrada'
       } else {
@@ -858,7 +1006,7 @@
     async function cancelAction() {
       pendingLateArrival = null
       pendingClockOut    = null
-      await sb.auth.signOut()
+      try { await sb.auth.signOut() } catch (_) {}  // no-op si no hay sesión activa
       reset()
     }
 
@@ -903,12 +1051,14 @@
       clockRecord        = null
       pendingLateArrival = null
       pendingClockOut    = null
+      pinValue = ''
+      updatePinDots()
+      document.getElementById('pinError')?.classList.remove('show')
       document.getElementById('inputEmail').value    = ''
       document.getElementById('inputPassword').value = ''
       document.getElementById('loginError').classList.remove('show')
       document.getElementById('loginBtn').disabled   = false
-      showState('state-login')
-      setTimeout(() => document.getElementById('inputEmail').focus(), 300)
+      showState('state-pin')  // siempre vuelve al PIN pad
     }
 
     // ── Prevenir cierre accidental (modo kiosko) ───────────────

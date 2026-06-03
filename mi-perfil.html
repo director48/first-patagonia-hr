@@ -130,6 +130,22 @@
           </div>
         </div>
 
+        <!-- Ausencias del año -->
+        <div class="card mb-3" id="absencesCard" style="display:none">
+          <div class="card-header">
+            <span class="card-title">Mis ausencias este año</span>
+            <span class="text-muted text-sm" id="absencesCount"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Fecha</th><th>Turno asignado</th><th>Horas perdidas</th></tr></thead>
+              <tbody id="absencesTable">
+                <tr><td colspan="3" style="text-align:center;padding:1.5rem;color:var(--t2)">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- Grid: solicitudes + pagos -->
         <div class="grid-2">
 
@@ -448,6 +464,52 @@
       btn.disabled = true
     }
 
+    // ── Historial de ausencias ─────────────────────────────────
+    async function loadAbsences() {
+      const yearStart = new Date().getFullYear() + '-01-01'
+      const todayStr2 = today()
+
+      const [{ data: scheds }, { data: clocks }] = await Promise.all([
+        sb.from('schedules').select('date, shift_start, shift_end')
+          .eq('employee_id', profile.id).eq('day_type', 'turno')
+          .gte('date', yearStart).lt('date', todayStr2),
+        sb.from('clock_records').select('date')
+          .eq('employee_id', profile.id)
+          .gte('date', yearStart).lt('date', todayStr2)
+      ])
+
+      const clockedDates = new Set((clocks || []).map(c => c.date))
+      const absences = (scheds || []).filter(s => !clockedDates.has(s.date))
+
+      const card  = document.getElementById('absencesCard')
+      const tbody = document.getElementById('absencesTable')
+      const count = document.getElementById('absencesCount')
+
+      if (!absences.length) {
+        card.style.display = 'block'
+        count.textContent = 'Sin ausencias ✓'
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:1.5rem;color:var(--green);font-weight:500">Sin ausencias registradas este año</td></tr>'
+        return
+      }
+
+      card.style.display = 'block'
+      count.textContent = `${absences.length} ausencia${absences.length > 1 ? 's' : ''}`
+
+      tbody.innerHTML = absences.sort((a,b) => b.date.localeCompare(a.date)).map(s => {
+        const dt = new Date(s.date + 'T12:00:00')
+        const [sh, sm] = s.shift_start.split(':').map(Number)
+        const [eh, em] = s.shift_end.split(':').map(Number)
+        let mins = (eh * 60 + em) - (sh * 60 + sm)
+        if (mins <= 0) mins += 1440
+        const h = Math.floor(mins / 60), m = mins % 60
+        return `<tr>
+          <td>${dt.toLocaleDateString('es-CL', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</td>
+          <td>${s.shift_start.slice(0,5)} – ${s.shift_end.slice(0,5)}</td>
+          <td style="color:var(--red);font-weight:500">${h}h${m > 0 ? ' ' + m + 'm' : ''}</td>
+        </tr>`
+      }).join('')
+    }
+
     async function submitDL() {
       const start  = document.getElementById('dlStart').value
       const end    = document.getElementById('dlEnd').value
@@ -522,7 +584,8 @@
         loadWeekSchedule(),
         loadRecentClock(),
         loadRecentRequests(),
-        loadRecentPayments()
+        loadRecentPayments(),
+        loadAbsences()
       ])
     })()
   </script>

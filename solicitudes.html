@@ -382,8 +382,9 @@
 
     async function submitReview(status) {
       const { id, type } = reviewTarget
-      const note = document.getElementById('adminNote').value
+      const note  = document.getElementById('adminNote').value
       const table = type === 'dl' ? 'time_off_requests' : 'overtime_records'
+      const rec   = recordCache[id]
 
       const { error } = await sb.from(table).update({
         status, admin_notes: note,
@@ -392,6 +393,32 @@
       }).eq('id', id)
 
       if (error) { showToast('Error al actualizar', 'error'); return }
+
+      // Notificación por email al empleado (no bloquea si falla)
+      if (status !== 'pendiente' && rec?.employee_id) {
+        try {
+          const { data: empProfile } = await sb.from('profiles')
+            .select('full_name').eq('id', rec.employee_id).single()
+          const { data: authUser } = await sb.auth.admin?.getUserById?.(rec.employee_id) ?? {}
+          const empEmail = authUser?.user?.email
+          // Fallback: intentar a través de la edge function solo si tenemos email
+          if (empEmail && empProfile) {
+            const detail = type === 'dl'
+              ? `${typeLabel(rec.type)} · ${formatDate(rec.start_date)} al ${formatDate(rec.end_date)}`
+              : `Horas extras ${rec.hours}h · ${formatDate(rec.date)}`
+            await fetch(`${SUPABASE_URL}/functions/v1/notify-request`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
+              body: JSON.stringify({
+                employee_email: empEmail,
+                employee_name:  empProfile.full_name,
+                type, status, detail, admin_notes: note
+              })
+            }).catch(() => {})  // silencioso si falla
+          }
+        } catch (_) {}
+      }
+
       const msg = status === 'aprobado' ? 'Aprobado ✓' : status === 'pendiente' ? 'Vuelta a pendiente ✓' : 'Rechazado'
       const toastType = status === 'aprobado' ? 'success' : status === 'pendiente' ? 'success' : 'warning'
       showToast(msg, toastType)

@@ -35,6 +35,12 @@
             <h1>Equipo</h1>
             <p id="empCount" class="text-muted"></p>
           </div>
+          <div class="flex-center gap-1">
+            <label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;cursor:pointer">
+              <input type="checkbox" id="showInactive" onchange="loadEmployees()">
+              Mostrar inactivos
+            </label>
+          </div>
         </div>
 
         <div class="card">
@@ -116,7 +122,29 @@
             <label>Teléfono</label>
             <input type="tel" id="empPhone" placeholder="+56 9 ...">
           </div>
-          <div class="form-group">
+          <div class="form-group" id="activeSection" style="display:none">
+            <label>Estado</label>
+            <select id="empActive">
+              <option value="true">Activo</option>
+              <option value="false">Inactivo (temporada terminada)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- PIN del kiosco (visible solo al editar) -->
+        <div id="pinSection" style="display:none">
+          <div class="form-row">
+            <div class="form-group">
+              <label>
+                PIN del kiosco
+                <span style="color:var(--t2);font-size:.72rem;font-weight:400"> · 4 dígitos para fichar en el terminal</span>
+              </label>
+              <input type="text" id="empPin" maxlength="4" pattern="[0-9]{4}" placeholder="ej. 1234"
+                     style="max-width:120px;font-size:1.3rem;letter-spacing:.3em;text-align:center">
+            </div>
+            <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:.1rem">
+              <button type="button" class="btn btn--ghost btn--sm" onclick="generatePin()">Generar PIN</button>
+            </div>
           </div>
         </div>
 
@@ -197,12 +225,19 @@
     const empCache = {}
     let editingOriginalBalance = 0
 
+    function generatePin() {
+      const pin = String(Math.floor(1000 + Math.random() * 9000))
+      document.getElementById('empPin').value = pin
+    }
+
     function openNewModal() {
       document.getElementById('modalTitle').textContent = 'Agregar empleado'
       document.getElementById('saveBtn').textContent = 'Crear empleado'
       document.getElementById('editId').value = ''
       document.getElementById('createSection').style.display = 'block'
       document.getElementById('editOnlySection').style.display = 'none'
+      document.getElementById('pinSection').style.display = 'none'
+      document.getElementById('activeSection').style.display = 'none'
       document.getElementById('empEmail').value = ''
       document.getElementById('empPassword').value = ''
       document.getElementById('empName').value = ''
@@ -222,12 +257,16 @@
       document.getElementById('editId').value = emp.id
       document.getElementById('createSection').style.display = 'none'
       document.getElementById('editOnlySection').style.display = 'block'
+      document.getElementById('activeSection').style.display = 'block'
+      document.getElementById('pinSection').style.display = 'block'
+      document.getElementById('empPin').value = emp.kiosk_pin || ''
       document.getElementById('empName').value = emp.full_name || ''
       document.getElementById('empRole').value = emp.role || 'employee'
       document.getElementById('empPosition').value = emp.position || ''
       document.getElementById('empDept').value = emp.department || ''
       document.getElementById('empPhone').value = emp.phone || ''
       document.getElementById('empBalance').value = editingOriginalBalance
+      document.getElementById('empActive').value = (emp.is_active !== false) ? 'true' : 'false'
       document.getElementById('empModal').classList.add('open')
     }
 
@@ -251,10 +290,14 @@
         // Editar existente
         const newBalance = parseInt(document.getElementById('empBalance').value) || 0
         const delta = newBalance - editingOriginalBalance
+        const isActive = document.getElementById('empActive').value === 'true'
 
+        const pin = document.getElementById('empPin').value.replace(/\D/g,'').slice(0,4)
         const { error } = await sb.from('profiles').update({
           full_name: name, role, position: pos, department: dept, phone,
-          vacation_days_total: vac, day_balance: newBalance
+          vacation_days_total: vac, day_balance: newBalance,
+          is_active: isActive,
+          kiosk_pin: pin || null
         }).eq('id', editId)
 
         if (error) { showToast('Error al actualizar', 'error'); btn.disabled = false; return }
@@ -359,10 +402,14 @@
     }
 
     async function loadEmployees() {
-      const { data } = await sb.from('profiles').select('*').order('full_name')
+      const showInactive = document.getElementById('showInactive')?.checked
+      let q = sb.from('profiles').select('*').order('full_name')
+      if (!showInactive) q = q.or('is_active.is.null,is_active.eq.true')
+      const { data } = await q
       employees = data || []
 
-      document.getElementById('empCount').textContent = `${employees.length} persona${employees.length !== 1 ? 's' : ''} en el equipo`
+      const total = employees.length
+      document.getElementById('empCount').textContent = `${total} persona${total !== 1 ? 's' : ''} en el equipo`
 
       const tbody = document.getElementById('empTable')
       if (!employees.length) {
@@ -389,7 +436,7 @@
               <div class="flex-center gap-1">
                 <div style="width:32px;height:32px;border-radius:50%;background:${isAdmin ? 'var(--orange)' : 'var(--teal)'};display:flex;align-items:center;justify-content:center;color:white;font-size:.75rem;font-weight:600;flex-shrink:0">${initials}</div>
                 <div>
-                  <div style="font-weight:500">${e.full_name}</div>
+                  <div style="font-weight:500;${e.is_active===false?'color:var(--t2)':''}">${e.full_name}${e.is_active===false?' <span style="font-size:.68rem;color:var(--t2);font-weight:400">(inactivo)</span>':''}</div>
                   ${e.phone ? `<div class="text-muted text-sm">${e.phone}</div>` : ''}
                 </div>
               </div>

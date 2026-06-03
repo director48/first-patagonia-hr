@@ -25,7 +25,21 @@ async function initPage() {
   const profile = await getProfile(user.id)
   if (!profile) { await sb.auth.signOut(); window.location.href = 'login.html'; return null }
   renderSidebar(profile)
+  if (profile.role === 'admin') loadAdminBadge()
   return { user, profile }
+}
+
+async function loadAdminBadge() {
+  const [{ count: dl }, { count: he }, { count: rev }] = await Promise.all([
+    sb.from('time_off_requests').select('*', { count: 'exact', head: true }).eq('status', 'pendiente'),
+    sb.from('overtime_records').select('*', { count: 'exact', head: true }).eq('status', 'pendiente'),
+    sb.from('clock_records').select('*', { count: 'exact', head: true }).eq('needs_review', true).not('clock_out','is',null)
+  ])
+  const total = (dl ?? 0) + (he ?? 0) + (rev ?? 0)
+  const badge = document.getElementById('navBadgeSolicitudes')
+  if (!badge) return
+  badge.textContent = total > 99 ? '99+' : String(total)
+  badge.style.display = total > 0 ? 'inline' : 'none'
 }
 
 async function signOut() {
@@ -48,7 +62,7 @@ function renderSidebar(profile) {
     { href: 'dashboard.html',     icon: iconSvg('layout-dashboard'), label: 'Dashboard' },
     { section: 'Equipo' },
     { href: 'horarios.html',      icon: iconSvg('calendar-range'),   label: 'Turnos del equipo' },
-    { href: 'solicitudes.html',   icon: iconSvg('clipboard-list'),   label: 'Solicitudes' },
+    { href: 'solicitudes.html',   icon: iconSvg('clipboard-list'),   label: 'Solicitudes', badge: true },
     { href: 'pagos.html',         icon: iconSvg('credit-card'),      label: 'Pagos' },
     { href: 'empleados.html',     icon: iconSvg('users'),            label: 'Empleados' },
     { section: 'Ayuda' },
@@ -76,8 +90,12 @@ function renderSidebar(profile) {
     <nav class="sidebar-nav">
       ${links.map(l => l.section
         ? `<div class="nav-label">${l.section}</div>`
-        : `<a href="${l.href}" class="nav-link${page === l.href ? ' active' : ''}">${l.icon} ${l.label}</a>`
+        : `<a href="${l.href}" class="nav-link${page === l.href ? ' active' : ''}">
+            ${l.icon} ${l.label}
+            ${l.badge ? `<span id="navBadgeSolicitudes" style="display:none;margin-left:auto;background:#dc2626;color:white;border-radius:999px;padding:.05rem .42rem;font-size:.62rem;font-weight:700;min-width:16px;text-align:center;line-height:1.5"></span>` : ''}
+           </a>`
       ).join('')}
+
     </nav>
     <div class="sidebar-footer">
       <div class="sidebar-user">
