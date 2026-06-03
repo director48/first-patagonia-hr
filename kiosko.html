@@ -1089,6 +1089,22 @@
         needs_review: needsReview
       }).eq('id', clockRecord.id).select().single()
 
+      // ── Overtime: crear solicitud HH.EE. automática ─────────
+      // Si el empleado trabajó 30+ min extra y dio un motivo,
+      // se genera directamente una solicitud pendiente de aprobación.
+      // El empleado no tiene que hacer nada más.
+      if (!error && devType === 'overtime' && pendingClockOut?.deviationData?.overtimeMin > 0) {
+        const overMin   = pendingClockOut.deviationData.overtimeMin
+        const overHours = Math.max(0.5, Math.round(overMin / 30) * 0.5)  // mínimo 0.5h, redondeo a 0.5h
+        await sb.from('overtime_records').insert({
+          employee_id: currentProfile.id,
+          date:        now.toISOString().split('T')[0],
+          hours:       overHours,
+          reason:      note,
+          status:      'pendiente'
+        }).catch(() => {})  // silencioso si falla (no bloquea la salida)
+      }
+
       if (error) { showAction(); return }
       clockRecord = data
 
