@@ -68,6 +68,37 @@
           </div>
         </div>
 
+        <!-- ADMIN: resumen de horas del mes -->
+        <div id="hoursSection" class="hidden mb-3">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title" id="hoursSectionTitle">Resumen de horas</span>
+              <button class="btn btn--ghost btn--sm" onclick="exportCSV()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Exportar CSV
+              </button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Empleado</th>
+                    <th style="text-align:right">Días prog.</th>
+                    <th style="text-align:right">Días trabajados</th>
+                    <th style="text-align:right">Horas prog.</th>
+                    <th style="text-align:right">Horas trabajadas</th>
+                    <th style="text-align:right">Ausencias</th>
+                    <th style="text-align:right">HH.EE. aprobadas</th>
+                  </tr>
+                </thead>
+                <tbody id="hoursTable">
+                  <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--t2)">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <!-- ADMIN: tabla de pagos del equipo -->
         <div id="adminSection" class="hidden">
           <div class="card">
@@ -185,6 +216,7 @@
     let profile = null
     let employees = []
     let paymentsCache = {}
+    let summaryData = {}   // para el export CSV
 
     // Generar opciones de período (últimos 12 meses + próximo)
     function buildPeriodOptions() {
@@ -226,6 +258,7 @@
       if (profile.role === 'admin') {
         renderAdminTable(data || [])
         renderAdminStats(data || [])
+        loadHoursSummary()
       } else {
         renderEmpTable(data || [])
       }
@@ -299,6 +332,159 @@
       }).join('')
     }
 
+    // ── Resumen de horas mensual ───────────────────────────────
+    async function loadHoursSummary() {
+      const period   = getPeriod()
+      const firstDay = period
+      const d = new Date(period + 'T12:00:00')
+      const lastDay  = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0]
+      const todayStr = new Date().toISOString().split('T')[0]
+
+      document.getElementById('hoursSectionTitle').textContent =
+        `Resumen de horas · ${d.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}`
+
+      const tbody = document.getElementById('hoursTable')
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--t2)">Calculando...</td></tr>'
+
+      const [{ data: scheds }, { data: clocks }, { data: ot }] = await Promise.all([
+        sb.from('schedules').select('employee_id, date, shift_start, shift_end, day_type')
+          .gte('date', firstDay).lte('date', lastDay).eq('day_type', 'turno'),
+        sb.from('clock_records').select('employee_id, date, clock_in, clock_out')
+          .gte('date', firstDay).lte('date', lastDay),
+        sb.from('overtime_records').select('employee_id, hours')
+          .gte('date', firstDay).lte('date', lastDay).eq('status', 'aprobado')
+      ])
+
+      // Inicializar datos por empleado
+      summaryData = {}
+      employees.forEach(e => {
+        summaryData[e.id] = {
+          name: e.full_name, position: e.position || '',
+          scheduledMins: 0, workedMins: 0,
+          scheduledDays: 0, workedDays: 0,
+          absences: 0, otHours: 0
+        }
+      })
+
+      // Schedules → minutos programados
+      const schedByEmpDate = {}   // { empId: { date: sched } }
+      ;(scheds || []).forEach(s => {
+        if (!summaryData[s.employee_id]) return
+        const [sh, sm] = s.shift_start.split(':').map(Number)
+        const [eh, em] = s.shift_end.split(':').map(Number)
+        let mins = (eh * 60 + em) - (sh * 60 + sm)
+        if (mins <= 0) mins += 1440
+        summaryData[s.employee_id].scheduledMins += mins
+        summaryData[s.employee_id].scheduledDays++
+        if (!schedByEmpDate[s.employee_id]) schedByEmpDate[s.employee_id] = {}
+        schedByEmpDate[s.employee_id][s.date] = mins
+      })
+
+      // Clock records → minutos trabajados + presencias
+      const clockedDates = {}   // { empId: Set<date> }
+      ;(clocks || []).forEach(c => {
+        if (!summaryData[c.employee_id]) return
+        if (!clockedDates[c.employee_id]) clockedDates[c.employee_id] = new Set()
+        if (!c.clock_in || !c.clock_out) return
+        clockedDates[c.employee_id].add(c.date)
+        const schedMins = schedByEmpDate[c.employee_id]?.[c.date] ?? null
+        summaryData[c.employee_id].workedMins += calcWorkedMinutes(c, schedMins)
+        summaryData[c.employee_id].workedDays++
+      })
+
+      // Ausencias: día programado en el pasado sin clock_in
+      ;(scheds || []).forEach(s => {
+        if (!summaryData[s.employee_id]) return
+        if (s.date >= todayStr) return   // días futuros no cuentan
+        if (!clockedDates[s.employee_id]?.has(s.date)) {
+          summaryData[s.employee_id].absences++
+        }
+      })
+
+      // HH.EE. aprobadas
+      ;(ot || []).forEach(r => {
+        if (summaryData[r.employee_id]) summaryData[r.employee_id].otHours += Number(r.hours)
+      })
+
+      // Render tabla
+      const fmt = mins => {
+        const h = Math.floor(mins / 60), m = Math.round(mins % 60)
+        return `${h}h${m > 0 ? ' ' + m + 'm' : ''}`
+      }
+
+      if (!employees.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--t2)">Sin empleados</td></tr>'
+        return
+      }
+
+      tbody.innerHTML = employees.map(e => {
+        const s = summaryData[e.id]
+        if (!s) return ''
+        const pct = s.scheduledMins > 0 ? Math.round(s.workedMins / s.scheduledMins * 100) : 0
+        const pctColor = pct >= 95 ? 'var(--green)' : pct >= 75 ? 'var(--amber)' : 'var(--red)'
+        return `<tr>
+          <td>
+            <div style="font-weight:500;font-size:.88rem">${e.full_name}</div>
+            ${e.position ? `<div style="font-size:.72rem;color:var(--t2)">${e.position}</div>` : ''}
+          </td>
+          <td style="text-align:right;font-size:.88rem">${s.scheduledDays}</td>
+          <td style="text-align:right;font-size:.88rem">${s.workedDays}</td>
+          <td style="text-align:right;font-size:.88rem;color:var(--t2)">${fmt(s.scheduledMins)}</td>
+          <td style="text-align:right">
+            <span style="font-size:.88rem;font-weight:600">${fmt(s.workedMins)}</span>
+            <span style="font-size:.72rem;color:${pctColor};margin-left:.3rem">${pct}%</span>
+          </td>
+          <td style="text-align:right">
+            ${s.absences > 0
+              ? `<span style="color:var(--red);font-weight:600;font-size:.88rem">${s.absences}</span>`
+              : `<span style="color:var(--green);font-size:.88rem">—</span>`}
+          </td>
+          <td style="text-align:right;font-size:.88rem">
+            ${s.otHours > 0 ? `<span style="color:var(--teal);font-weight:600">${s.otHours}h</span>` : '—'}
+          </td>
+        </tr>`
+      }).join('')
+    }
+
+    function exportCSV() {
+      const period = getPeriod()
+      const d = new Date(period + 'T12:00:00')
+      const monthName = d.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
+      const fmt = mins => {
+        const h = Math.floor(mins / 60), m = Math.round(mins % 60)
+        return m > 0 ? `${h}h ${m}m` : `${h}h`
+      }
+
+      const rows = [
+        ['Empleado', 'Cargo', 'Días programados', 'Días trabajados', 'Horas programadas', 'Horas trabajadas', '% cumplimiento', 'Ausencias', 'HH.EE. aprobadas']
+      ]
+
+      employees.forEach(e => {
+        const s = summaryData[e.id]
+        if (!s) return
+        const pct = s.scheduledMins > 0 ? Math.round(s.workedMins / s.scheduledMins * 100) : 0
+        rows.push([
+          s.name, s.position,
+          s.scheduledDays, s.workedDays,
+          fmt(s.scheduledMins), fmt(s.workedMins),
+          `${pct}%`, s.absences,
+          s.otHours > 0 ? `${s.otHours}h` : '0'
+        ])
+      })
+
+      // BOM para que Excel muestre tildes correctamente
+      const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = `horas_${period}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }
+
     function openPayModal(empId) {
       const emp = employees.find(e => e.id === (empId || ''))
       const pay = empId ? paymentsCache[empId] : null
@@ -357,6 +543,7 @@
       if (profile.role === 'admin') {
         document.getElementById('topbarSub').textContent = 'Registro de remuneraciones del equipo'
         document.getElementById('adminStats').classList.remove('hidden')
+        document.getElementById('hoursSection').classList.remove('hidden')
         document.getElementById('adminSection').classList.remove('hidden')
         document.getElementById('newPayBtn').style.display = 'inline-flex'
         const { data } = await sb.from('profiles').select('*').order('full_name')

@@ -43,6 +43,9 @@
           </div>
         </div>
 
+        <!-- Novedades (empleado) -->
+        <div id="notiSection" style="display:none;margin-bottom:1.5rem"></div>
+
         <!-- Stats -->
         <div class="stats-grid">
           <div class="stat-card">
@@ -245,6 +248,71 @@
       `
     }
 
+    // ── Novedades (empleado) ──────────────────────────────────
+    async function loadNotifications(p) {
+      const cutoff = new Date()
+      cutoff.setDate(cutoff.getDate() - 7)
+      const iso = cutoff.toISOString()
+
+      const [{ data: reqs }, { data: ot }] = await Promise.all([
+        sb.from('time_off_requests')
+          .select('type, status, start_date, end_date, approved_at')
+          .eq('employee_id', p.id)
+          .neq('status', 'pendiente')
+          .gte('approved_at', iso)
+          .order('approved_at', { ascending: false })
+          .limit(5),
+        sb.from('overtime_records')
+          .select('date, hours, status, approved_at')
+          .eq('employee_id', p.id)
+          .neq('status', 'pendiente')
+          .gte('approved_at', iso)
+          .order('approved_at', { ascending: false })
+          .limit(5)
+      ])
+
+      const items = [
+        ...(reqs || []).map(r => ({
+          approved_at: r.approved_at,
+          status:      r.status,
+          label:       typeLabel(r.type),
+          detail:      `${formatDate(r.start_date)}${r.end_date !== r.start_date ? ' – ' + formatDate(r.end_date) : ''}`
+        })),
+        ...(ot || []).map(r => ({
+          approved_at: r.approved_at,
+          status:      r.status,
+          label:       'Horas extras',
+          detail:      `${r.hours}h · ${formatDate(r.date)}`
+        }))
+      ].sort((a, b) => new Date(b.approved_at) - new Date(a.approved_at)).slice(0, 5)
+
+      const section = document.getElementById('notiSection')
+      if (!items.length) return   // sin novedades → no mostrar nada
+
+      section.style.display = 'block'
+      section.innerHTML = `
+        <div style="border-radius:var(--r);overflow:hidden;border:1px solid var(--border)">
+          <div style="padding:.6rem 1rem;background:var(--bg);font-size:.72rem;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--t2);border-bottom:1px solid var(--border)">
+            Novedades recientes
+          </div>
+          ${items.map(n => {
+            const isOk  = n.status === 'aprobado'
+            const color = isOk ? 'var(--green)' : 'var(--red)'
+            const icon  = isOk ? '✓' : '✗'
+            const dt    = new Date(n.approved_at).toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })
+            return `<div style="display:flex;align-items:center;gap:.75rem;padding:.65rem 1rem;border-bottom:1px solid var(--border);background:white">
+              <span style="width:22px;height:22px;border-radius:50%;background:${isOk?'rgba(22,163,74,.12)':'rgba(220,38,38,.1)'};display:flex;align-items:center;justify-content:center;font-size:.75rem;color:${color};flex-shrink:0;font-weight:700">${icon}</span>
+              <div style="flex:1;min-width:0">
+                <span style="font-size:.85rem;font-weight:500">${n.label}</span>
+                <span style="font-size:.82rem;color:var(--t2)"> · ${n.detail}</span>
+              </div>
+              <span style="font-size:.75rem;color:var(--t2);white-space:nowrap">${dt}</span>
+              <span style="font-size:.75rem;font-weight:600;color:${color};white-space:nowrap">${isOk?'Aprobado':'Rechazado'}</span>
+            </div>`
+          }).join('')}
+        </div>`
+    }
+
     // ── Estado del equipo (admin) ─────────────────────────────
     async function loadTeamStatus(p) {
       const section = document.getElementById('teamStatusSection')
@@ -376,7 +444,7 @@
         loadStats(profile),
         loadTodayShift(profile),
         loadRequests(profile),
-        isAdmin ? loadTeamStatus(profile) : Promise.resolve()
+        isAdmin ? loadTeamStatus(profile) : loadNotifications(profile)
       ])
 
       // Auto-refresh del estado del equipo cada 60 segundos (solo admin)
