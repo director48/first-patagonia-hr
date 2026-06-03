@@ -211,16 +211,17 @@
       </div>
       <div class="modal-body" style="max-height:80vh;overflow-y:auto">
 
-        <!-- Empleados (selección múltiple) -->
+        <!-- Empleados (chips seleccionables) -->
         <div class="form-group">
-          <label>Empleados</label>
-          <div style="border:1px solid var(--border);border-radius:8px;max-height:148px;overflow-y:auto">
-            <label style="display:flex;align-items:center;gap:.5rem;padding:.45rem .75rem;cursor:pointer;font-size:.82rem;border-bottom:1px solid var(--border);background:var(--bg)">
-              <input type="checkbox" id="rotSelectAll" onchange="rotToggleAll(this)">
-              <strong>Seleccionar todos</strong>
-            </label>
-            <div id="rotEmpList"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
+            <label style="margin:0">Empleados</label>
+            <div style="display:flex;gap:.35rem">
+              <button type="button" class="btn btn--ghost btn--sm" onclick="rotSelectAllEmps(true)" style="font-size:.72rem">Todos</button>
+              <button type="button" class="btn btn--ghost btn--sm" onclick="rotSelectAllEmps(false)" style="font-size:.72rem">Ninguno</button>
+            </div>
           </div>
+          <div id="rotEmpGrid" style="display:flex;flex-wrap:wrap;gap:.4rem;padding:.55rem;border:1px solid var(--border);border-radius:8px;min-height:46px;cursor:default"></div>
+          <div id="rotEmpCountLabel" style="margin-top:.3rem;font-size:.74rem;color:var(--t2)">Ningún empleado seleccionado</div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -235,11 +236,11 @@
         <div class="form-row" style="margin-bottom:.5rem">
           <div class="form-group">
             <label>Días de trabajo</label>
-            <input type="number" id="rotWork" value="11" min="1" max="20" oninput="buildDayList()">
+            <input type="number" id="rotWork" value="12" min="1" max="20" oninput="buildDayList()">
           </div>
           <div class="form-group">
             <label>Días libres</label>
-            <input type="number" id="rotOff" value="4" min="1" max="14" oninput="updateRotBalance()">
+            <input type="number" id="rotOff" value="3" min="1" max="14" oninput="updateRotBalance()">
           </div>
         </div>
 
@@ -627,38 +628,68 @@
     }
 
     // ── GENERADOR DE ROTACIÓN ──────────────────────────────────
-    const ROL_BASE = 11
+    const ROL_BASE = 12      // 12×3 — ciclo base del hotel
     let daySchedules = []   // [{ date, in, out, type }]
     const DAYS_ES_FULL = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
 
-    function rotToggleAll(el) {
-      document.querySelectorAll('.rot-emp-cb').forEach(cb => { cb.checked = el.checked })
+    // ── Selector de empleados con chips ───────────────────────
+    let selectedEmpIds = new Set()
+
+    function renderEmpChips() {
+      const grid = document.getElementById('rotEmpGrid')
+      if (!grid) return
+      grid.innerHTML = employees.map(e => {
+        const sel = selectedEmpIds.has(e.id)
+        const bal = e.day_balance ?? 0
+        const balStr = bal === 0 ? '✓' : bal > 0 ? `+${bal}d` : `${bal}d`
+        const balColor = bal > 0 ? 'var(--red)' : bal < 0 ? 'var(--teal)' : 'var(--green)'
+        return `<div onclick="toggleEmpChip('${e.id}')"
+          style="display:inline-flex;align-items:center;gap:.3rem;
+            padding:.35rem .75rem;border-radius:20px;cursor:pointer;
+            font-size:.83rem;font-weight:${sel ? 600 : 400};
+            border:2px solid ${sel ? 'var(--orange)' : 'var(--border)'};
+            background:${sel ? 'rgba(232,82,26,.09)' : 'white'};
+            color:${sel ? 'var(--orange)' : 'var(--t1)'};
+            transition:all .15s;user-select:none">
+          ${e.full_name.split(' ').slice(0,2).join(' ')}
+          <span style="font-size:.68rem;font-weight:500;color:${balColor}">${balStr}</span>
+        </div>`
+      }).join('')
+
+      const n = selectedEmpIds.size
+      const lbl = document.getElementById('rotEmpCountLabel')
+      if (lbl) lbl.textContent = n === 0 ? 'Ningún empleado seleccionado'
+        : n === 1 ? '1 empleado seleccionado'
+        : `${n} empleados seleccionados`
+    }
+
+    function toggleEmpChip(empId) {
+      if (selectedEmpIds.has(empId)) selectedEmpIds.delete(empId)
+      else selectedEmpIds.add(empId)
+      renderEmpChips()
+      updateRotBalance()
+    }
+
+    function rotSelectAllEmps(select) {
+      if (select) employees.forEach(e => selectedEmpIds.add(e.id))
+      else selectedEmpIds.clear()
+      renderEmpChips()
       updateRotBalance()
     }
 
     function getSelectedRotEmps() {
-      return [...document.querySelectorAll('.rot-emp-cb:checked')].map(cb => ({
-        id: cb.value, balance: parseInt(cb.dataset.balance ?? 0), name: cb.dataset.name
-      }))
+      return employees
+        .filter(e => selectedEmpIds.has(e.id))
+        .map(e => ({ id: e.id, balance: e.day_balance ?? 0, name: e.full_name }))
     }
 
     function openRotacion() {
-      const list = document.getElementById('rotEmpList')
-      list.innerHTML = employees.map(e => `
-        <label style="display:flex;align-items:center;gap:.5rem;padding:.35rem .75rem;cursor:pointer;font-size:.83rem">
-          <input type="checkbox" class="rot-emp-cb" value="${e.id}"
-                 data-balance="${e.day_balance ?? 0}" data-name="${e.full_name}"
-                 onchange="updateRotBalance()">
-          <span>${e.full_name}</span>
-          <span style="margin-left:auto;font-size:.75rem;color:${(e.day_balance??0)>0?'var(--red)':(e.day_balance??0)<0?'var(--teal)':'var(--t2)'}">
-            ${(e.day_balance??0)===0?'✓ A mano':(e.day_balance??0)>0?`Debe ${e.day_balance}d`:`+${Math.abs(e.day_balance??0)}d`}
-          </span>
-        </label>`).join('')
-      document.getElementById('rotSelectAll').checked = false
+      selectedEmpIds.clear()
+      renderEmpChips()
       document.getElementById('rotStart').value = today()
       document.getElementById('rotCiclos').value = '1'
-      document.getElementById('rotWork').value = '11'
-      document.getElementById('rotOff').value = '4'
+      document.getElementById('rotWork').value = '12'
+      document.getElementById('rotOff').value = '3'
       document.getElementById('rotBalanceBox').innerHTML = ''
       buildDayList()
       document.getElementById('rotacionModal').classList.add('open')
@@ -668,7 +699,7 @@
 
     function buildDayList() {
       const start  = document.getElementById('rotStart').value
-      const work   = parseInt(document.getElementById('rotWork').value) || 11
+      const work   = parseInt(document.getElementById('rotWork').value) || 12
       const ciclos = parseInt(document.getElementById('rotCiclos').value) || 1
       if (!start) return
 
@@ -759,9 +790,9 @@
     }
 
     function updateRotBalance() {
-      const work   = parseInt(document.getElementById('rotWork').value) || 11
+      const work   = parseInt(document.getElementById('rotWork').value) || 12
       const ciclos = parseInt(document.getElementById('rotCiclos').value) || 1
-      const off    = parseInt(document.getElementById('rotOff').value) || 4
+      const off    = parseInt(document.getElementById('rotOff').value) || 3
       const delta  = (work - ROL_BASE) * ciclos
       const selected = getSelectedRotEmps()
       const box = document.getElementById('rotBalanceBox')
@@ -805,8 +836,8 @@
 
       const start  = document.getElementById('rotStart').value
       const ciclos = parseInt(document.getElementById('rotCiclos').value) || 1
-      const work   = parseInt(document.getElementById('rotWork').value) || 11
-      const off    = parseInt(document.getElementById('rotOff').value) || 4
+      const work   = parseInt(document.getElementById('rotWork').value) || 12
+      const off    = parseInt(document.getElementById('rotOff').value) || 3
 
       if (!start) { showToast('Selecciona fecha de inicio', 'error'); return }
       if (!daySchedules.length) { showToast('Configura los días de trabajo', 'error'); return }
