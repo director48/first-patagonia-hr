@@ -562,11 +562,26 @@
     document.addEventListener('mousedown', resetIdleTimer)
 
     // ── Reglas de horas ───────────────────────────────────────
-    // < turno: cuenta minutos exactos
-    // 0-29 min extra: NO cuenta (conversaciones, demoras menores)
-    // 30+ min extra: cuenta como posible HH.EE., requiere motivo
-    const OVER_THRESHOLD_MIN  = 30   // minutos mínimos para que cuente el extra
-    const UNDER_THRESHOLD_MIN = 15   // margen de tolerancia para salida anticipada
+    const OVER_THRESHOLD_MIN  = 30   // min extra para que cuenten (posible HH.EE.)
+    const UNDER_THRESHOLD_MIN = 15   // margen tolerancia para revisión admin
+    const EARLY_BLOCK_MIN     = 25   // bloquear si llega >25 min antes del turno
+
+    // ── WhatsApp al admin (CallMeBot) ─────────────────────────
+    // Setup: el admin debe agregar +34 644 57 59 16 a sus contactos
+    // y enviarle "I allow callmebot to send me messages" por WA.
+    // Recibirá su API key. Cópiala en CALLMEBOT_KEY.
+    const ADMIN_WA_PHONE = '56984644870'   // sin + ni espacios
+    const CALLMEBOT_KEY  = ''              // ← pegar aquí tu API key de callmebot.com
+
+    async function notifyAdminWA(msg) {
+      if (!CALLMEBOT_KEY) return
+      try {
+        await fetch(
+          `https://api.callmebot.com/whatsapp.php?phone=${ADMIN_WA_PHONE}&text=${encodeURIComponent(msg)}&apikey=${CALLMEBOT_KEY}`,
+          { mode: 'no-cors' }
+        )
+      } catch (_) {}
+    }
 
     // ── Reloj en vivo ──────────────────────────────────────────
     function tick() {
@@ -741,6 +756,26 @@
       }
 
       if (!clockRecord || !clockRecord.clock_in) {
+        // ── Verificar ventana de entrada ────────────────────────
+        if (currentSchedule?.shift_start && currentSchedule.day_type === 'turno') {
+          const todayDate  = new Date().toISOString().split('T')[0]
+          const schedStart = new Date(`${todayDate}T${currentSchedule.shift_start}:00`)
+          const minEarly   = Math.round((schedStart - new Date()) / 60000)
+
+          if (minEarly > EARLY_BLOCK_MIN) {
+            // Demasiado temprano — bloquear
+            const canFrom = new Date(schedStart.getTime() - EARLY_BLOCK_MIN * 60000)
+            const canTime = canFrom.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+            document.getElementById('actionStatus').innerHTML =
+              `Tu turno empieza a las <span class="entrada-time">${currentSchedule.shift_start.slice(0,5)}</span>`
+            btn.textContent = `Puedes ingresar desde las ${canTime}`
+            btn.className   = 'btn-main btn-cancel'
+            btn.disabled    = true
+            showState('state-action')
+            return
+          }
+        }
+
         const shiftInfo = (currentSchedule?.day_type === 'turno' && currentSchedule?.shift_start)
           ? `Turno: <span class="entrada-time">${currentSchedule.shift_start.slice(0,5)} – ${currentSchedule.shift_end.slice(0,5)}</span>`
           : 'Sin turno asignado hoy'
@@ -785,37 +820,60 @@
       const todayStr = now.toISOString().split('T')[0]
 
       if (!clockRecord || !clockRecord.clock_in) {
-        // ── ENTRADA — verificar llegada tardía antes de guardar ─
-        let lateArrivalMin = 0
-        if (currentSchedule?.shift_start) {
+        // ── ENTRADA — calcular hora efectiva y detectar tarde ───
+        let effectiveClockIn = now.toISOString()
+        let lateArrivalMin   = 0
+        let isLate           = false
+
+        if (currentSchedule?.shift_start && currentSchedule.day_type === 'turno') {
           const schedStart = new Date(`${todayStr}T${currentSchedule.shift_start}:00`)
-          lateArrivalMin = Math.round((now - schedStart) / 60000)
+          const minEarly   = Math.round((schedStart - now) / 60000)  // positivo = temprano
+
+          if (minEarly > 0) {
+            // Llegó antes del turno (dentro de la ventana permitida):
+            // las horas cuentan desde el inicio oficial del turno
+            effectiveClockIn = schedStart.toISOString()
+          } else if (minEarly < 0) {
+            // Llegó tarde
+            lateArrivalMin = Math.abs(minEarly)
+            isLate = lateArrivalMin > UNDER_THRESHOLD_MIN  // >15 min → revisión + motivo
+          }
         }
-        const isLate = lateArrivalMin > UNDER_THRESHOLD_MIN
 
         const { data, error } = await sb.from('clock_records').upsert({
-          employee_id: currentProfile.id,
-          date:        todayStr,
-          clock_in:    now.toISOString(),
-          needs_review: isLate   // marcar inmediatamente si llega tarde
+          employee_id:  currentProfile.id,
+          date:         todayStr,
+          clock_in:     effectiveClockIn,
+          needs_review: isLate
         }, { onConflict: 'employee_id,date' }).select().single()
 
         if (error) { btn.disabled = false; showAction(); return }
         clockRecord = data
 
+        // WhatsApp al admin si llegó tarde (cualquier cantidad)
+        if (lateArrivalMin > 0) {
+          const shift = currentSchedule?.shift_start
+            ? `${currentSchedule.shift_start.slice(0,5)}–${currentSchedule.shift_end.slice(0,5)}`
+            : 'turno sin horario'
+          notifyAdminWA(
+            `⚠️ First Patagonia HR\n` +
+            `${currentProfile.full_name} llegó ${minsToStr(lateArrivalMin)} tarde a su turno (${shift}).\n` +
+            `Ingresó a las ${now.toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })}.`
+          )
+        }
+
         if (isLate) {
-          // Pedir motivo — no hacer signOut todavía
           pendingLateArrival = { recordId: data.id, lateMin: lateArrivalMin }
           showLateArrivalPrompt(lateArrivalMin)
           btn.disabled = false
           return
         }
 
-        // Llegada dentro del margen → éxito directo
+        // Llegada normal → éxito directo
         await sb.auth.signOut()
-        const timeStr = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+        const displayTime = new Date(effectiveClockIn).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
         document.getElementById('successLabel').textContent = 'ENTRADA REGISTRADA'
-        document.getElementById('successTime').textContent  = timeStr
+        document.getElementById('successTime').textContent  = displayTime
         document.getElementById('successName').textContent  = currentProfile.full_name
         showState('state-success')
         startCountdown('countdownBar', 'countdownTxt', 5, reset)
@@ -954,6 +1012,16 @@
         deviation_note: reason
       }).eq('id', pendingLateArrival.recordId)
 
+      // WA con motivo (complementa la notificación enviada al clock-in)
+      if (pendingLateArrival.lateMin > 0) {
+        const shift = currentSchedule?.shift_start
+          ? `${currentSchedule.shift_start.slice(0,5)}–${currentSchedule.shift_end.slice(0,5)}`
+          : ''
+        notifyAdminWA(
+          `📋 Motivo de tardanza — ${currentProfile.full_name}${shift ? ' (' + shift + ')' : ''}\n"${reason}"`
+        )
+      }
+
       pendingLateArrival = null
 
       await sb.auth.signOut()
@@ -978,12 +1046,43 @@
       const reason = document.getElementById('reasonText').value.trim()
       if (!reason || reason.length < 5) return
       if (!pendingClockOut) return
-      await saveClockOut(pendingClockOut.now, reason, pendingClockOut.needsReview)
+      const devType = pendingClockOut.deviationData?.mainType
+      await saveClockOut(pendingClockOut.now, reason, pendingClockOut.needsReview, devType)
       pendingClockOut = null
     }
 
-    async function saveClockOut(now, note, needsReview) {
+    async function sendExitWA(devType, deviationData, reason) {
+      if (!deviationData) return
+      const { earlyDepartureMin, overtimeMin, workedMin, scheduledMin } = deviationData
+      const shift = currentSchedule?.shift_start
+        ? `${currentSchedule.shift_start.slice(0,5)}–${currentSchedule.shift_end.slice(0,5)}`
+        : ''
+      const name = currentProfile.full_name
+
+      if (devType === 'early_exit') {
+        notifyAdminWA(
+          `⚠️ First Patagonia HR\n` +
+          `${name} salió ${minsToStr(earlyDepartureMin)} antes de su turno${shift ? ' (' + shift + ')' : ''}.\n` +
+          `Trabajó ${minsToStr(workedMin)} de ${minsToStr(scheduledMin)}.\n` +
+          `Motivo: "${reason}"`
+        )
+      } else if (devType === 'overtime') {
+        notifyAdminWA(
+          `ℹ️ First Patagonia HR\n` +
+          `${name} se quedó ${minsToStr(overtimeMin)} extra${shift ? ' en turno ' + shift : ''}.\n` +
+          `Motivo: "${reason}"`
+        )
+      }
+    }
+
+    async function saveClockOut(now, note, needsReview, devType = null) {
       showState('state-loading')
+
+      // Enviar WA al admin antes de guardar
+      if (devType && pendingClockOut?.deviationData) {
+        await sendExitWA(devType, pendingClockOut.deviationData, note)
+      }
+
       const { data, error } = await sb.from('clock_records').update({
         clock_out: now.toISOString(),
         deviation_note: note,
