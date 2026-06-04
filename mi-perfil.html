@@ -545,6 +545,9 @@
       })
       if (error) { showToast('Error al enviar', 'error'); return }
       showToast('Solicitud enviada ✓', 'success')
+      // Notificar al admin
+      const dlDays = Math.max(1, Math.round((new Date(end+'T12:00:00') - new Date(start+'T12:00:00')) / 86400000) + 1)
+      notifyAdmin(`📋 First Patagonia HR\n${profile.full_name} solicitó ${typeLabel(type)}\n${formatDate(start)}${end !== start ? ' al ' + formatDate(end) : ''} (${dlDays} día${dlDays > 1 ? 's' : ''})${reason ? '\n"' + reason + '"' : ''}`)
       document.getElementById('quickDLModal').classList.remove('open')
       loadRecentRequests()
     }

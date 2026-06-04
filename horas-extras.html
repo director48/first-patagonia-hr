@@ -236,6 +236,8 @@
 
       if (error) { showToast('Error al registrar', 'error'); return }
       showToast('Horas extras enviadas para aprobación ✓', 'success')
+      // Notificar al admin
+      notifyAdmin(`⏱ First Patagonia HR\n${profile.full_name} envió solicitud de HH.EE.\n${hours}h · ${formatDate(date)}\n"${reason}"`)
       closeLogModal()
       loadStats()
       loadHistory()

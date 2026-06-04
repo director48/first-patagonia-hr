@@ -29,6 +29,21 @@ async function initPage() {
   return { user, profile }
 }
 
+// ── Notificación WhatsApp al admin (fire-and-forget, nunca bloquea) ──
+function notifyAdmin(msg) {
+  try {
+    fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey':        SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      },
+      body: JSON.stringify({ message: msg })
+    }).catch(() => {})
+  } catch (_) {}
+}
+
 async function loadAdminBadge() {
   const [{ count: dl }, { count: he }, { count: rev }] = await Promise.all([
     sb.from('time_off_requests').select('*', { count: 'exact', head: true }).eq('status', 'pendiente'),

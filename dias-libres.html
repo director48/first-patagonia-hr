@@ -608,6 +608,9 @@
 
       if (error) { showToast('Error: ' + error.message + ' | code: ' + error.code, 'error'); return }
       showToast('Solicitud enviada ✓', 'success')
+      // Notificar al admin
+      const days = calcDays(start, end)
+      notifyAdmin(`📋 First Patagonia HR\n${profile.full_name} solicitó ${typeLabel(type)}\n${formatDate(start)}${end !== start ? ' al ' + formatDate(end) : ''} (${days} día${days > 1 ? 's' : ''})${reason ? '\n"' + reason + '"' : ''}`)
       closeRequestModal()
       loadRequests()
       if (profile.role === 'admin') loadPending()

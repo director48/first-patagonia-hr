@@ -570,20 +570,21 @@
     const EARLY_BLOCK_MIN     = 20   // bloquear entrada si llega >20 min antes del turno
     const MAX_EARLY_EXIT_MIN  = 60   // bloquear salida si quiere irse >60 min antes del fin
 
-    // ── WhatsApp al admin (CallMeBot) ─────────────────────────
-    // Setup: el admin debe agregar +34 644 57 59 16 a sus contactos
-    // y enviarle "I allow callmebot to send me messages" por WA.
-    // Recibirá su API key. Cópiala en CALLMEBOT_KEY.
-    const ADMIN_WA_PHONE = '56984644870'   // sin + ni espacios
-    const CALLMEBOT_KEY  = ''              // ← pegar aquí tu API key de callmebot.com
+    // ── WhatsApp al admin (vía Supabase Edge Function + Green API) ────
+    // La configuración se hace en Supabase Secrets, no aquí.
+    // Ver instrucciones en supabase/functions/send-whatsapp/index.ts
 
-    async function notifyAdminWA(msg) {
-      if (!CALLMEBOT_KEY) return
+    function notifyAdminWA(msg) {
       try {
-        await fetch(
-          `https://api.callmebot.com/whatsapp.php?phone=${ADMIN_WA_PHONE}&text=${encodeURIComponent(msg)}&apikey=${CALLMEBOT_KEY}`,
-          { mode: 'no-cors' }
-        )
+        fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+          method:  'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey':        SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          },
+          body: JSON.stringify({ message: msg })
+        }).catch(() => {})
       } catch (_) {}
     }
 
@@ -897,9 +898,13 @@
           return
         }
 
-        // Llegada normal → éxito directo
-        try { await sb.auth.signOut() } catch (_) {}
+        // Llegada normal → notificar + éxito directo
         const displayTime = new Date(effectiveClockIn).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+        const shiftStr = currentSchedule?.shift_start
+          ? `${currentSchedule.shift_start.slice(0,5)}–${currentSchedule.shift_end.slice(0,5)}`
+          : 'sin turno asignado'
+        notifyAdminWA(`✅ First Patagonia HR\n${currentProfile.full_name} ingresó a las ${displayTime}\nTurno: ${shiftStr}`)
+        try { await sb.auth.signOut() } catch (_) {}
         document.getElementById('successLabel').textContent = 'ENTRADA REGISTRADA'
         document.getElementById('successTime').textContent  = displayTime
         document.getElementById('successName').textContent  = currentProfile.full_name
@@ -1149,6 +1154,23 @@
 
       if (error) { showAction(); return }
       clockRecord = data
+
+      // Notificar salida normal (sin desviación)
+      if (!devType) {
+        const outTime   = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+        const actualMin = (now - new Date(data.clock_in)) / 60000
+        let schedMin    = null
+        if (currentSchedule?.shift_start && currentSchedule?.shift_end) {
+          const [sh,sm] = currentSchedule.shift_start.slice(0,5).split(':').map(Number)
+          const [eh,em] = currentSchedule.shift_end.slice(0,5).split(':').map(Number)
+          schedMin = (eh*60+em)-(sh*60+sm)
+        }
+        const workedStr = minsToStr(schedMin !== null ? Math.min(actualMin, schedMin) : actualMin)
+        const shiftStr2 = currentSchedule?.shift_start
+          ? `${currentSchedule.shift_start.slice(0,5)}–${currentSchedule.shift_end.slice(0,5)}`
+          : ''
+        notifyAdminWA(`✅ First Patagonia HR\n${currentProfile.full_name} salió a las ${outTime}\nTrabajó: ${workedStr}${shiftStr2 ? '  · Turno: ' + shiftStr2 : ''}`)
+      }
 
       try { await sb.auth.signOut() } catch (_) {}
       const timeStr = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
