@@ -479,9 +479,15 @@
             En turno ahora · ${working.length}
           </div>
           ${working.map(s => {
-            const inTime = new Date(s.clock.clock_in).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
-            const wMins = (new Date() - new Date(s.clock.clock_in)) / 60000
-            const flag  = s.clock.needs_review ? ' <span style="color:var(--amber);font-size:.72rem" title="Llegó tarde">⚠</span>' : ''
+            const inTime    = new Date(s.clock.clock_in).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+            const wMins     = (new Date() - new Date(s.clock.clock_in)) / 60000
+            // Detectar llegada tarde comparando directamente la hora de entrada con el inicio del turno
+            const schedStart = new Date(`${s.date}T${s.shift_start}:00`)
+            const lateMin    = Math.round((new Date(s.clock.clock_in) - schedStart) / 60000)
+            const isLate     = lateMin > 15
+            const flag       = (s.clock.needs_review || isLate)
+              ? ` <span style="color:var(--red);font-size:.72rem;font-weight:600">⚠ ${isLate ? minsToStr(lateMin) + ' tarde' : 'Revisar'}</span>`
+              : ''
             return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border)">
               <span style="font-size:.84rem"><strong>${s.profiles?.full_name || '—'}</strong>${flag}</span>
               <span style="font-size:.8rem;color:var(--teal)">↓ ${inTime} · ${minsToStr(wMins)} trabajadas</span>
