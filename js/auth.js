@@ -30,17 +30,21 @@ async function initPage() {
 }
 
 // ── Notificación WhatsApp al admin (fire-and-forget, nunca bloquea) ──
+// Llama directamente a Green API desde el browser (no requiere JWT válido)
+const WA_INSTANCE = '7107643408'
+const WA_TOKEN    = '9d24cc1e42b149e7acaa68213fed35e2448a653de92647c397'
+const WA_ADMIN    = '56966165309@c.us'
+
 function notifyAdmin(msg) {
   try {
-    fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey':        SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`
-      },
-      body: JSON.stringify({ message: msg })
-    }).catch(() => {})
+    fetch(
+      `https://api.green-api.com/waInstance${WA_INSTANCE}/sendMessage/${WA_TOKEN}`,
+      {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ chatId: WA_ADMIN, message: msg })
+      }
+    ).catch(() => {})
   } catch (_) {}
 }
 
