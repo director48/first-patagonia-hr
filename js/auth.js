@@ -25,7 +25,10 @@ async function initPage() {
   const profile = await getProfile(user.id)
   if (!profile) { await sb.auth.signOut(); window.location.href = 'login.html'; return null }
   renderSidebar(profile)
-  if (profile.role === 'admin') loadAdminBadge()
+  if (profile.role === 'admin') {
+    loadAdminBadge()
+    if (typeof window.initChat === 'function') window.initChat(profile)
+  }
   return { user, profile }
 }
 
