@@ -26,13 +26,13 @@ window.initChat = function initChat(adminProfile) {
       border-radius:14px; display:none; flex-direction:column;
       box-shadow:0 12px 40px rgba(0,0,0,.7); overflow:hidden;
       font-family:'Jost',sans-serif;
-      animation: chatIn .22s ease;
     }
     @keyframes chatIn {
       from { opacity:0; transform:translateY(12px) scale(.97); }
       to   { opacity:1; transform:translateY(0) scale(1); }
     }
-    #hrChatPanel.open { display:flex; }
+    /* BUG-5 fix: animación en .open para que se reproduzca en cada apertura */
+    #hrChatPanel.open { display:flex; animation: chatIn .22s ease; }
     #hrChatHead {
       padding:.7rem 1rem; background:var(--teal,#00B8A9);
       color:#0A0A0A; font-weight:600; font-size:.88rem;
@@ -100,6 +100,9 @@ window.initChat = function initChat(adminProfile) {
 
   const firstName = (adminProfile?.full_name || '').split(' ')[0] || 'Admin'
 
+  // BUG-6 fix: chips en una sola línea → pre-wrap no añade línea en blanco extra
+  const welcomeChips = '<div class="hrc-chips"><span class="hrc-chip" data-q="Resumen del equipo hoy">📊 Resumen hoy</span><span class="hrc-chip" data-q="¿Quién llegó tarde esta semana?">⚠️ Tardanzas</span><span class="hrc-chip" data-q="¿Qué solicitudes hay pendientes?">🔔 Pendientes</span><span class="hrc-chip" data-q="¿Quién trabaja hoy?">📋 Turnos hoy</span></div>'
+
   document.body.insertAdjacentHTML('beforeend', `
     <button id="hrChatBtn" title="Asistente HR — consulta datos del equipo">🤖</button>
     <div id="hrChatPanel">
@@ -108,13 +111,7 @@ window.initChat = function initChat(adminProfile) {
         <button id="hrChatClose" title="Cerrar">✕</button>
       </div>
       <div id="hrChatMsgs">
-        <div class="hrc-msg bot">Hola <strong>${firstName}</strong> 👋 Puedo consultar datos del equipo en tiempo real. Prueba con:
-<div class="hrc-chips">
-  <span class="hrc-chip" data-q="Resumen del equipo hoy">📊 Resumen hoy</span>
-  <span class="hrc-chip" data-q="¿Quién llegó tarde esta semana?">⚠️ Tardanzas</span>
-  <span class="hrc-chip" data-q="¿Qué solicitudes hay pendientes?">🔔 Pendientes</span>
-  <span class="hrc-chip" data-q="¿Quién trabaja hoy?">📋 Turnos hoy</span>
-</div></div>
+        <div class="hrc-msg bot">Hola <strong>${firstName}</strong> 👋 Puedo consultar datos del equipo en tiempo real. Prueba con:${welcomeChips}</div>
         <div class="hrc-hint">Escribe o toca un chip para comenzar</div>
       </div>
       <div id="hrChatFoot">
@@ -153,20 +150,17 @@ window.initChat = function initChat(adminProfile) {
     const h = Math.floor(m / 60), min = m % 60
     return h > 0 ? `${h}h${min > 0 ? ` ${min}min` : ''}` : `${min}min`
   }
-
-  function dateLabel(d) {
-    return new Date(d + 'T12:00:00').toLocaleDateString('es-CL', {
-      weekday: 'long', day: 'numeric', month: 'long'
-    })
-  }
+  // BUG-8: dateLabel eliminada (dead code — definida pero nunca llamada)
 
   // ── Extracción de entidades ──────────────────────────────────────────────────
   function extractEmployee(text) {
-    const t = normalize(text)
+    // BUG-1 fix: comparación de palabras exactas (no substring) para evitar
+    // falsos positivos como "Ana" dentro de "mañana" → normalize("mañana")="manana"
+    const words = normalize(text).split(/\s+/)
     let best = null, bestScore = 0
     for (const e of empCache) {
       for (const part of normalize(e.full_name || '').split(' ')) {
-        if (part.length > 2 && t.includes(part) && part.length > bestScore) {
+        if (part.length > 2 && words.includes(part) && part.length > bestScore) {
           best = e; bestScore = part.length
         }
       }
@@ -203,6 +197,13 @@ window.initChat = function initChat(adminProfile) {
       const sun = new Date(now); sun.setDate(now.getDate() - day)
       return { from: mon.toISOString().slice(0, 10), to: sun.toISOString().slice(0, 10), label: 'la semana pasada' }
     }
+    // BUG-10 fix: manejar "próxima semana" antes de "esta semana"
+    if (/proxima semana|semana que viene|semana siguiente/.test(t)) {
+      const day = now.getDay() || 7
+      const nextMon = new Date(now); nextMon.setDate(now.getDate() - day + 8)
+      const nextSun = new Date(now); nextSun.setDate(now.getDate() - day + 14)
+      return { from: nextMon.toISOString().slice(0, 10), to: nextSun.toISOString().slice(0, 10), label: 'la próxima semana' }
+    }
     if (/esta semana|semana/.test(t)) {
       const day = now.getDay() || 7
       const mon = new Date(now); mon.setDate(now.getDate() - day + 1)
@@ -237,7 +238,8 @@ window.initChat = function initChat(adminProfile) {
     const [{ data: scheds }, { data: clocks }, { count: dlP }, { count: heP }] = await Promise.all([
       sb.from('schedules')
         .select('employee_id,shift_start,shift_end,shift_type,profiles(full_name)')
-        .eq('date', td).neq('shift_type', 'libre'),
+        .eq('date', td).neq('shift_type', 'libre')
+        .not('shift_start', 'is', null),   // BUG-3 fix
       sb.from('attendance_records')
         .select('employee_id,clock_in,clock_out').eq('date', td),
       sb.from('time_off_requests').select('*', { count: 'exact', head: true }).eq('status', 'pendiente'),
@@ -345,7 +347,10 @@ window.initChat = function initChat(adminProfile) {
 
     let q = sb.from('schedules')
       .select('employee_id,date,shift_start,shift_end,shift_type,profiles(full_name)')
-      .gte('date', from).lte('date', to).neq('shift_type', 'libre')
+      .gte('date', from).lte('date', to)
+      .neq('shift_type', 'libre')
+      .not('shift_start', 'is', null)    // BUG-4 fix
+      .order('date')                     // BUG-9 fix: primero por fecha
       .order('shift_start')
     if (emp) q = q.eq('employee_id', emp.id)
     const { data } = await q
@@ -355,13 +360,14 @@ window.initChat = function initChat(adminProfile) {
         : `Sin turnos asignados para ${label}.`
 
     const { data: clocks } = await sb.from('attendance_records')
-      .select('employee_id,clock_in,clock_out').gte('date', from).lte('date', to)
+      .select('employee_id,date,clock_in,clock_out').gte('date', from).lte('date', to)
+    // BUG-2 fix: clave employee_id+date para evitar colisión en rangos multi-día
     const ckMap = {}
-    for (const c of clocks || []) ckMap[c.employee_id] = c
+    for (const c of clocks || []) ckMap[`${c.employee_id}_${c.date}`] = c
 
     const lines = data.map(s => {
       const t = `${(s.shift_start || '').slice(0, 5)}–${(s.shift_end || '').slice(0, 5)}`
-      const c = ckMap[s.employee_id]
+      const c = ckMap[`${s.employee_id}_${s.date}`]  // BUG-2 fix
       const st = c?.clock_in && !c?.clock_out ? ' ✅' : c?.clock_out ? ' 🏠' : ''
       const d = from !== to ? ` [${s.date}]` : ''
       return `  • ${s.profiles?.full_name || '?'}${d}: ${t}${st}`
@@ -397,7 +403,8 @@ window.initChat = function initChat(adminProfile) {
       const fresh = empCache.find(e => e.id === emp.id)
       return `🗓 ${emp.full_name} tiene **${fresh?.day_balance || 0} día(s) compensatorio(s)** disponibles.`
     }
-    const lines = empCache
+    // BUG-11 fix: [...empCache].sort() para no mutar el array compartido
+    const lines = [...empCache]
       .sort((a, b) => (b.day_balance || 0) - (a.day_balance || 0))
       .map(e => `  • ${e.full_name}: ${e.day_balance || 0} días`)
       .join('\n')
@@ -446,7 +453,9 @@ window.initChat = function initChat(adminProfile) {
     if (/resumen|status hoy|estado hoy|equipo hoy|como esta el equipo/.test(t))
       return queryResumen()
 
-    if (/solicitud|pendiente|aprobar|horas extra|hh\.?ee|hora extra/.test(t))
+    // BUG-7 fix: "hora extra" eliminado para no capturar "¿cuántas horas extra hizo Juan?"
+    // Ahora ese caso cae correctamente en queryHoras (que también muestra HH.EE. trabajadas)
+    if (/solicitud|pendiente|aprobar|hh\.?ee/.test(t))
       return querySolicitudes()
 
     if (/ausent|no marc|falt|no vino|no trabajo|no asistio/.test(t))
