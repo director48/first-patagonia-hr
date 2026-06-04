@@ -566,8 +566,9 @@
 
     // ── Reglas de horas ───────────────────────────────────────
     const OVER_THRESHOLD_MIN  = 30   // min extra para que cuenten (posible HH.EE.)
-    const UNDER_THRESHOLD_MIN = 15   // margen tolerancia para revisión admin
-    const EARLY_BLOCK_MIN     = 25   // bloquear si llega >25 min antes del turno
+    const UNDER_THRESHOLD_MIN = 15   // tolerancia para llegada tarde (revisión admin)
+    const EARLY_BLOCK_MIN     = 20   // bloquear entrada si llega >20 min antes del turno
+    const MAX_EARLY_EXIT_MIN  = 60   // bloquear salida si quiere irse >60 min antes del fin
 
     // ── WhatsApp al admin (CallMeBot) ─────────────────────────
     // Setup: el admin debe agregar +34 644 57 59 16 a sus contactos
@@ -805,10 +806,31 @@
             </div>
           `)
         } else {
-          document.getElementById('actionStatus').innerHTML =
-            `Entrada: <span class="entrada-time">${inTime}</span>`
-          btn.textContent = 'Registrar Salida'
-          btn.className   = 'btn-main btn-salida'
+          // Verificar si intenta salir demasiado temprano (>60 min antes del fin del turno)
+          let exitBlocked = false
+          if (currentSchedule?.shift_end) {
+            const todayDate = new Date().toISOString().split('T')[0]
+            const schedEnd  = new Date(`${todayDate}T${currentSchedule.shift_end}:00`)
+            const minUntilEnd = Math.round((schedEnd - new Date()) / 60000)
+
+            if (minUntilEnd > MAX_EARLY_EXIT_MIN) {
+              exitBlocked = true
+              const canFrom = new Date(schedEnd.getTime() - MAX_EARLY_EXIT_MIN * 60000)
+              const canTime = canFrom.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+              document.getElementById('actionStatus').innerHTML =
+                `Entrada: <span class="entrada-time">${inTime}</span>`
+              btn.textContent = `Podrás salir desde las ${canTime}`
+              btn.className   = 'btn-main btn-cancel'
+              btn.disabled    = true
+            }
+          }
+
+          if (!exitBlocked) {
+            document.getElementById('actionStatus').innerHTML =
+              `Entrada: <span class="entrada-time">${inTime}</span>`
+            btn.textContent = 'Registrar Salida'
+            btn.className   = 'btn-main btn-salida'
+          }
         }
       }
 
@@ -906,8 +928,22 @@
 
           let mainType = null
 
-          if (lateArrivalMin > UNDER_THRESHOLD_MIN) {
-            // Llegó más de 15 min tarde → más importante que cualquier otra desviación
+          if (earlyDepartureMin > MAX_EARLY_EXIT_MIN) {
+            // Intenta salir más de 60 min antes — bloqueado (showAction ya lo previene,
+            // este bloqueo es la segunda capa de seguridad)
+            const schedEnd  = new Date(`${clockInDate}T${currentSchedule.shift_end}:00`)
+            const canFrom   = new Date(schedEnd.getTime() - MAX_EARLY_EXIT_MIN * 60000)
+            const canTime   = canFrom.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+            document.getElementById('actionStatus').innerHTML =
+              `Entrada: <span class="entrada-time">${new Date(clockRecord.clock_in).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})}</span>`
+            document.getElementById('actionBtn').textContent = `Podrás salir desde las ${canTime}`
+            document.getElementById('actionBtn').className   = 'btn-main btn-cancel'
+            document.getElementById('actionBtn').disabled    = true
+            showState('state-action')
+            btn.disabled = false
+            return
+          } else if (lateArrivalMin > UNDER_THRESHOLD_MIN) {
+            // Llegó más de 15 min tarde
             mainType    = 'late_arrival'
             needsReason = true
             needsReview = true
@@ -916,13 +952,13 @@
             mainType    = 'overtime'
             needsReason = true
             needsReview = true
-          } else if (earlyDepartureMin > UNDER_THRESHOLD_MIN) {
-            // Salió más de 15 min antes
+          } else if (earlyDepartureMin > 0) {
+            // Salió antes del fin del turno (cualquier minuto) → requiere explicación
             mainType    = 'early_exit'
             needsReason = true
             needsReview = true
           }
-          // Rango [-15, +29] → normal, sin motivo
+          // Salida normal (entre el fin del turno y +29 min) → sin motivo
 
           if (mainType) {
             deviationData = { mainType, lateArrivalMin, earlyDepartureMin, overtimeMin, workedMin, scheduledMin }
