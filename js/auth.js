@@ -84,6 +84,17 @@ function renderSidebar(profile) {
 
   sidebar.innerHTML = `
     <div class="sidebar-logo">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:38px;height:38px;display:block;margin:0 auto .5rem">
+        <path fill="#E8521A" fill-rule="evenodd"
+          d="M50 4 L95 91 Q97 98 89 98 L11 98 Q3 98 5 91 Z
+             M50 38 L76 88 L24 88 Z"/>
+        <path fill="#E8521A"
+          d="M24 88 L38 59 L50 73 L50 88 Z
+             M76 88 L62 59 L50 73 L50 88 Z"/>
+        <path fill="white"
+          d="M20 72 L26 60 L32 60 L32 72 Z
+             M80 72 L74 60 L68 60 L68 72 Z"/>
+      </svg>
       <h1>First Patagonia</h1>
       <span>${isAdmin ? 'Administrador' : 'Panel Personal'}</span>
     </div>
