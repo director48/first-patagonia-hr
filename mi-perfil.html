@@ -270,15 +270,29 @@
     async function loadStats() {
       const firstMonth = todayStr.slice(0,7) + '-01'
 
-      const [{ data: clocks }, { data: ot }, { data: pays }] = await Promise.all([
-        sb.from('clock_records').select('clock_in,clock_out').eq('employee_id', profile.id).gte('date', firstMonth),
+      const [{ data: clocks }, { data: ot }, { data: pays }, { data: schedules }] = await Promise.all([
+        sb.from('clock_records').select('clock_in,clock_out,date').eq('employee_id', profile.id).gte('date', firstMonth),
         sb.from('overtime_records').select('hours').eq('employee_id', profile.id).eq('status','aprobado').gte('date', firstMonth),
-        sb.from('payments').select('net_amount,period,status').eq('employee_id', profile.id).order('period', { ascending: false }).limit(1)
+        sb.from('payments').select('net_amount,period,status').eq('employee_id', profile.id).order('period', { ascending: false }).limit(1),
+        sb.from('schedules').select('date,shift_start,shift_end').eq('employee_id', profile.id).gte('date', firstMonth).eq('day_type','turno')
       ])
 
-      // Horas trabajadas este mes (solo registros completos y válidos)
+      // Mapa fecha → minutos programados
+      const schedMap = {}
+      ;(schedules || []).forEach(s => {
+        if (!s.shift_start || !s.shift_end) return
+        const [sh, sm] = s.shift_start.split(':').map(Number)
+        const [eh, em] = s.shift_end.split(':').map(Number)
+        let mins = (eh * 60 + em) - (sh * 60 + sm)
+        if (mins <= 0) mins += 1440
+        schedMap[s.date] = mins
+      })
+
+      // Horas trabajadas este mes — cortadas al fin del turno (sin contar extras automáticamente)
       let totalMins = 0
-      ;(clocks || []).forEach(c => { totalMins += calcWorkedMinutes(c) })
+      ;(clocks || []).forEach(c => {
+        totalMins += calcWorkedMinutes(c, schedMap[c.date] ?? null)
+      })
       const hrs  = Math.floor(totalMins / 60)
       const mins = Math.round(totalMins % 60)
       document.getElementById('statHoras').textContent =

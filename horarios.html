@@ -423,7 +423,15 @@
           const c = clocksMap[emp.id]?.[d]
           if (!c?.clock_in) return '<td style="color:var(--t2);font-size:.78rem;text-align:center">—</td>'
           const status = clockStatus(c)
-          totalMins += calcWorkedMinutes(c)
+          const sc = schedulesMap[emp.id]?.[d]
+        let scMins = null
+        if (sc?.shift_start && sc?.shift_end) {
+          const [sh,sm] = sc.shift_start.split(':').map(Number)
+          const [eh,em] = sc.shift_end.split(':').map(Number)
+          scMins = (eh*60+em)-(sh*60+sm)
+          if (scMins <= 0) scMins += 1440
+        }
+        totalMins += calcWorkedMinutes(c, scMins)
           const inT = formatTime(c.clock_in)
           if (status === 'missing_exit') {
             return `<td style="font-size:.75rem;text-align:center">

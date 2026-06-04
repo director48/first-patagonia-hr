@@ -214,14 +214,11 @@ function calcWorkedMinutes(record, scheduledMinutes = null) {
 
   if (scheduledMinutes === null) return actual  // sin turno asignado: contar exacto
 
-  const deviation = actual - scheduledMinutes
-
-  if (deviation >= 0 && deviation < 30) {
-    // Trabajó entre 0 y 29 min extra → no cuentan los minutos de más
-    return scheduledMinutes
-  }
-  // Trabajó menos (exacto) o 30+ min extra (también exacto, para revisión del admin)
-  return actual
+  // Regla del hotel:
+  // · Si salió antes → contar horas reales (actual < scheduled)
+  // · Si llegó a tiempo o se quedó extra → contar solo hasta el fin del turno
+  // Los minutos extra NUNCA se suman automáticamente (se registran aparte en HH.EE.)
+  return Math.min(actual, scheduledMinutes)
 }
 
 function workedLabel(record) {
