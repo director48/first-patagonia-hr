@@ -763,7 +763,7 @@
         // ── Verificar ventana de entrada ────────────────────────
         if (currentSchedule?.shift_start && currentSchedule.day_type === 'turno') {
           const todayDate  = new Date().toISOString().split('T')[0]
-          const schedStart = new Date(`${todayDate}T${currentSchedule.shift_start}:00`)
+          const schedStart = new Date(`${todayDate}T${currentSchedule.shift_start.slice(0,5)}:00`)
           const minEarly   = Math.round((schedStart - new Date()) / 60000)
 
           if (minEarly > EARLY_BLOCK_MIN) {
@@ -810,7 +810,7 @@
           let exitBlocked = false
           if (currentSchedule?.shift_end) {
             const todayDate = new Date().toISOString().split('T')[0]
-            const schedEnd  = new Date(`${todayDate}T${currentSchedule.shift_end}:00`)
+            const schedEnd  = new Date(`${todayDate}T${currentSchedule.shift_end.slice(0,5)}:00`)
             const minUntilEnd = Math.round((schedEnd - new Date()) / 60000)
 
             if (minUntilEnd > MAX_EARLY_EXIT_MIN) {
@@ -853,7 +853,7 @@
         let isLate           = false
 
         if (currentSchedule?.shift_start && currentSchedule.day_type === 'turno') {
-          const schedStart = new Date(`${todayStr}T${currentSchedule.shift_start}:00`)
+          const schedStart = new Date(`${todayStr}T${currentSchedule.shift_start.slice(0,5)}:00`)
           const minEarly   = Math.round((schedStart - now) / 60000)  // positivo = temprano
 
           if (minEarly > 0) {
@@ -916,8 +916,8 @@
           const clockInDate = clockRecord.clock_in.split('T')[0]
 
           // Construir horario programado como objetos Date
-          const schedStart = new Date(`${clockInDate}T${currentSchedule.shift_start}:00`)
-          const schedEnd   = new Date(`${clockInDate}T${currentSchedule.shift_end}:00`)
+          const schedStart = new Date(`${clockInDate}T${currentSchedule.shift_start.slice(0,5)}:00`)
+          const schedEnd   = new Date(`${clockInDate}T${currentSchedule.shift_end.slice(0,5)}:00`)
           if (schedEnd <= schedStart) schedEnd.setDate(schedEnd.getDate() + 1) // turno cruza medianoche
 
           const lateArrivalMin    = Math.round((new Date(clockRecord.clock_in) - schedStart) / 60000)
@@ -931,7 +931,7 @@
           if (earlyDepartureMin > MAX_EARLY_EXIT_MIN) {
             // Intenta salir más de 60 min antes — bloqueado (showAction ya lo previene,
             // este bloqueo es la segunda capa de seguridad)
-            const schedEnd  = new Date(`${clockInDate}T${currentSchedule.shift_end}:00`)
+            const schedEnd  = new Date(`${clockInDate}T${currentSchedule.shift_end.slice(0,5)}:00`)
             const canFrom   = new Date(schedEnd.getTime() - MAX_EARLY_EXIT_MIN * 60000)
             const canTime   = canFrom.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
             document.getElementById('actionStatus').innerHTML =

@@ -482,7 +482,7 @@
             const inTime    = new Date(s.clock.clock_in).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
             const wMins     = (new Date() - new Date(s.clock.clock_in)) / 60000
             // Detectar llegada tarde comparando directamente la hora de entrada con el inicio del turno
-            const schedStart = new Date(`${s.date}T${s.shift_start}:00`)
+            const schedStart = new Date(`${s.date}T${s.shift_start.slice(0,5)}:00`)
             const lateMin    = Math.round((new Date(s.clock.clock_in) - schedStart) / 60000)
             const isLate     = lateMin > 15
             const flag       = (s.clock.needs_review || isLate)
