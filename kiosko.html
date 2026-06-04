@@ -696,7 +696,7 @@
       const { data: authData, error: authError } = await sb.auth.signInWithPassword({ email, password })
 
       if (authError) {
-        await sb.auth.signOut()
+        try { await sb.auth.signOut() } catch (_) {}
         err.textContent = 'Correo o contraseña incorrectos. Intenta de nuevo.'
         err.classList.add('show')
         document.getElementById('inputPassword').value = ''
@@ -710,7 +710,7 @@
         .select('*').eq('id', authData.user.id).single()
 
       if (!profile) {
-        await sb.auth.signOut()
+        try { await sb.auth.signOut() } catch (_) {}
         err.textContent = 'Tu perfil no está configurado. Habla con el administrador.'
         err.classList.add('show')
         btn.disabled = false
@@ -870,7 +870,7 @@
         }
 
         // Llegada normal → éxito directo
-        await sb.auth.signOut()
+        try { await sb.auth.signOut() } catch (_) {}
         const displayTime = new Date(effectiveClockIn).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
         document.getElementById('successLabel').textContent = 'ENTRADA REGISTRADA'
         document.getElementById('successTime').textContent  = displayTime
@@ -1024,7 +1024,7 @@
 
       pendingLateArrival = null
 
-      await sb.auth.signOut()
+      try { await sb.auth.signOut() } catch (_) {}
       const timeStr = new Date(clockRecord.clock_in).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
       document.getElementById('successLabel').textContent = 'ENTRADA REGISTRADA'
       document.getElementById('successTime').textContent  = timeStr
@@ -1108,7 +1108,7 @@
       if (error) { showAction(); return }
       clockRecord = data
 
-      await sb.auth.signOut()
+      try { await sb.auth.signOut() } catch (_) {}
       const timeStr = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
       document.getElementById('successLabel').textContent = 'SALIDA REGISTRADA'
       document.getElementById('successTime').textContent  = timeStr
@@ -1133,7 +1133,7 @@
       document.getElementById('doneOut').textContent =
         new Date(clockRecord.clock_out).toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })
 
-      sb.auth.signOut()
+      try { await sb.auth.signOut() } catch (_) {}
       showState('state-done')
       startCountdown('countdownBar2', 'countdownTxt2', 6, reset)
     }

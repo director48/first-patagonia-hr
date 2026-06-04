@@ -732,8 +732,8 @@
         const dt   = new Date(day.date + 'T12:00:00')
         const dow  = DAYS_ES_FULL[dt.getDay()]
         const label = `${dow} ${dt.getDate()} ${dt.toLocaleDateString('es-CL',{month:'short'})}`
-        const cicleNum = Math.floor(i / (parseInt(document.getElementById('rotWork').value)||11)) + 1
-        const dayNum   = (i % (parseInt(document.getElementById('rotWork').value)||11)) + 1
+        const cicleNum = Math.floor(i / (parseInt(document.getElementById('rotWork').value)||12)) + 1
+        const dayNum   = (i % (parseInt(document.getElementById('rotWork').value)||12)) + 1
         const isBorder = i > 0 && dayNum === 1 ? 'border-top:2px solid var(--orange)' : ''
 
         return `
