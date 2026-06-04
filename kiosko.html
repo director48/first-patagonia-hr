@@ -844,6 +844,7 @@
           employee_id:  currentProfile.id,
           date:         todayStr,
           clock_in:     effectiveClockIn,
+          clock_out:    null,
           needs_review: isLate
         }, { onConflict: 'employee_id,date' }).select().single()
 
@@ -1126,7 +1127,7 @@
     }
 
     // ── Jornada completa ───────────────────────────────────────
-    function showDone() {
+    async function showDone() {
       document.getElementById('doneName').textContent = currentProfile.full_name
       document.getElementById('doneIn').textContent  =
         new Date(clockRecord.clock_in).toLocaleTimeString('es-CL',  { hour:'2-digit', minute:'2-digit' })

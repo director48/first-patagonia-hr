@@ -54,7 +54,7 @@ function renderSidebar(profile) {
   if (!sidebar) return
 
   const isAdmin = profile.role === 'admin'
-  const initials = profile.full_name.split(' ').filter(Boolean).slice(0, 2).map(n => n[0]).join('').toUpperCase()
+  const initials = (profile.full_name || '').split(' ').filter(Boolean).slice(0, 2).map(n => n[0]).join('').toUpperCase() || '?'
   const page = window.location.pathname.split('/').pop() || 'dashboard.html'
 
   const adminLinks = [

@@ -522,7 +522,7 @@
           <td>${c?.clock_in ? formatTime(c.clock_in) : '<span class="text-muted">—</span>'}</td>
           <td>${c?.clock_out ? formatTime(c.clock_out) : '<span class="text-muted">—</span>'}</td>
           <td>${worked}</td>
-          <td>${s ? `${s.shift_start.slice(0,5)} – ${s.shift_end.slice(0,5)}` : '<span class="text-muted">—</span>'}</td>
+          <td>${s?.shift_start ? `${s.shift_start.slice(0,5)} – ${s.shift_end.slice(0,5)}` : '<span class="text-muted">—</span>'}</td>
         </tr>`
       }).join('')
     }

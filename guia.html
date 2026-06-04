@@ -313,6 +313,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/client.js"></script>
 <script>
+// ── CONSTANTES (deben declararse antes de usarse) ──────────
+const var_orange = '#E8521A'
+
 // ── DATA ────────────────────────────────────────────────────
 const SECTIONS = {
   admin: [
@@ -728,7 +731,6 @@ function buildDemo(id) {
 }
 
 // ── DEMO INTERACTIONS ────────────────────────────────────────
-const var_orange = '#E8521A'
 let adminClockState = 0
 let empClockState = 0
 
