@@ -729,7 +729,7 @@
       if (error) { showToast('Error al cancelar', 'error'); return }
       showToast('Solicitud cancelada', 'success')
       loadRequests()
-      loadCalendar()
+      if (profile.role !== 'admin') loadCalendar()  // el admin no tiene calendario de empleado
     }
 
     ;(async () => {

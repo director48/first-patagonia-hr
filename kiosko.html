@@ -793,8 +793,10 @@
           btn.textContent  = 'Contacta al administrador'
           btn.className    = 'btn-main btn-cancel'
           btn.disabled     = true
+          // Limpiar avisos previos antes de insertar (evita duplicados si se entra varias veces)
+          document.querySelectorAll('#state-action .over10-warn').forEach(el => el.remove())
           document.getElementById('actionName').insertAdjacentHTML('afterend', `
-            <div style="font-size:clamp(.75rem,1.4vw,.88rem);color:rgba(255,120,120,.9);text-align:center;margin-bottom:1.5rem;line-height:1.6;max-width:340px">
+            <div class="over10-warn" style="font-size:clamp(.75rem,1.4vw,.88rem);color:rgba(255,120,120,.9);text-align:center;margin-bottom:1.5rem;line-height:1.6;max-width:340px">
               Han pasado más de 10 horas desde tu entrada.<br>
               El administrador debe registrar tu salida manualmente.
             </div>
@@ -1167,6 +1169,7 @@
       clockRecord        = null
       pendingLateArrival = null
       pendingClockOut    = null
+      document.querySelectorAll('.over10-warn').forEach(el => el.remove())
       pinValue = ''
       updatePinDots()
       document.getElementById('pinError')?.classList.remove('show')

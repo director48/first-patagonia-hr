@@ -183,8 +183,8 @@
           </div>
           <!-- Presets rápidos -->
           <div style="display:flex;gap:.4rem;margin-top:.5rem">
-            <button type="button" class="btn btn--ghost btn--sm" onclick="applyShiftPreset('manana')" style="font-size:.75rem">🌅 Mañana (07:30–15:30)</button>
-            <button type="button" class="btn btn--ghost btn--sm" onclick="applyShiftPreset('tarde')" style="font-size:.75rem">🌆 Tarde (15:00–23:00)</button>
+            <button type="button" class="btn btn--ghost btn--sm" onclick="applyShiftPreset('manana', this)" style="font-size:.75rem">🌅 Mañana (07:30–15:30)</button>
+            <button type="button" class="btn btn--ghost btn--sm" onclick="applyShiftPreset('tarde', this)" style="font-size:.75rem">🌆 Tarde (15:00–23:00)</button>
           </div>
         </div>
         <div class="form-group">
@@ -572,7 +572,9 @@
       const notes = document.getElementById('shiftNotes').value
       const dayType = currentDayType
 
+      const existingId = document.getElementById('shiftId').value
       let payload = { employee_id: empId, date, notes, day_type: dayType, created_by: profile.id }
+      if (existingId) payload.id = existingId   // incluir id al editar → upsert por PK, no solo por índice
 
       if (dayType === 'turno') {
         const shiftStart = document.getElementById('shiftStart').value
@@ -617,14 +619,14 @@
     }
 
     // Para el modal de turno individual
-    function applyShiftPreset(type) {
+    function applyShiftPreset(type, btn) {
       const s = SHIFTS[type]
       if (!s) return
       document.getElementById('shiftStart').value = s.in
       document.getElementById('shiftEnd').value   = s.out
       // Highlight el botón activo
       document.querySelectorAll('#shiftModal .btn--ghost').forEach(b => b.style.background = '')
-      event.target.style.background = 'rgba(232,82,26,.1)'
+      if (btn) btn.style.background = 'rgba(232,82,26,.1)'
     }
 
     // ── GENERADOR DE ROTACIÓN ──────────────────────────────────
@@ -915,7 +917,8 @@
         document.getElementById('btnPrint').classList.remove('hidden')
         const { data } = await sb.from('profiles').select('*').order('full_name')
         employees = data || []
-        document.getElementById('rotCiclos')?.addEventListener('input', updateRotBalance)
+        // rotCiclos ya tiene oninput="buildDayList()" que llama updateRotBalance al final
+        // No agregar segundo listener para evitar doble ejecución
       } else {
         document.getElementById('empSection').classList.remove('hidden')
       }
