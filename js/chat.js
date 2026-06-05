@@ -397,16 +397,44 @@ window.initChat = function initChat(adminProfile) {
 
   async function queryDiasLibres(text) {
     const emp = extractEmployee(text)
-    if (emp) {
-      const fresh = empCache.find(e => e.id === emp.id)
-      return `🗓 ${emp.full_name} tiene **${fresh?.day_balance || 0} día(s) compensatorio(s)** disponibles.`
+
+    // Saldo de turnos (day_balance): convención de toda la app —
+    //   > 0 = el empleado DEBE días al hotel · < 0 = el hotel le debe al empleado
+    const rotStr = (bal) => {
+      if (!bal) return 'saldo de turnos a mano ✓'
+      return bal > 0
+        ? `debe ${bal} día(s) de turno al hotel`
+        : `el hotel le debe ${Math.abs(bal)} día(s) de turno`
     }
-    // BUG-11 fix: [...empCache].sort() para no mutar el array compartido
-    const lines = [...empCache]
-      .sort((a, b) => (b.day_balance || 0) - (a.day_balance || 0))
-      .map(e => `  • ${e.full_name}: ${e.day_balance || 0} días`)
+
+    if (emp) {
+      // Días compensatorios = misma fórmula que dashboard/mi-perfil/solicitudes
+      const comp  = await getCompensatoryBalance(emp.id)
+      const fresh = empCache.find(e => e.id === emp.id)
+      const bal   = fresh?.day_balance || 0
+      return `🗓 **${emp.full_name}**\n` +
+        `  • Días compensatorios disponibles: **${Math.max(0, comp.available)}** ` +
+        `(${comp.earned} ganados · ${comp.used} usados)\n` +
+        `  • Saldo de turnos: ${rotStr(bal)}`
+    }
+
+    // Equipo: calcular compensatorios en paralelo (uno por empleado)
+    const rows = await Promise.all(
+      empCache.map(async e => ({
+        name: e.full_name,
+        comp: (await getCompensatoryBalance(e.id)).available,
+        rot:  e.day_balance || 0
+      }))
+    )
+    const lines = rows
+      .sort((a, b) => b.comp - a.comp)
+      .map(e => {
+        const c = Math.max(0, e.comp)
+        const r = e.rot ? ` · ${e.rot > 0 ? 'debe ' + e.rot : 'a favor ' + Math.abs(e.rot)}d turnos` : ''
+        return `  • ${e.name}: ${c} compensatorio(s)${r}`
+      })
       .join('\n')
-    return `🗓 Saldo compensatorio del equipo:\n\n${lines || 'Sin datos'}`
+    return `🗓 Saldo del equipo (compensatorios + turnos):\n\n${lines || 'Sin datos'}`
   }
 
   async function querySolicitudes() {
