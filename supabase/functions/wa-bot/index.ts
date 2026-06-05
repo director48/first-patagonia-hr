@@ -41,9 +41,17 @@ async function sendWA(chatId: string, message: string): Promise<void> {
 }
 
 // ── Utilidades ────────────────────────────────────────────────────────────────
-// Zona horaria Chile — el server corre en UTC, hay que convertir todo
-const nowChile = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }))
-const todayStr = () => nowChile().toLocaleDateString('en-CA')   // YYYY-MM-DD en hora chilena
+// Zona horaria Chile usando Intl (más confiable en Deno que toLocaleString)
+const todayStr = (): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date())
+
+// Suma/resta días a una fecha YYYY-MM-DD sin problemas de zona horaria
+function shiftDate(base: string, days: number): string {
+  const [y, m, d] = base.split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d + days))
+  return dt.toISOString().slice(0, 10)
+}
+
 const pad = (n: number) => String(n).padStart(2, '0')
 
 function minsToStr(m: number): string {
@@ -82,45 +90,38 @@ function extractEmployee(text: string, employees: any[]) {
 }
 
 function extractDateRange(text: string) {
-  const t   = normalize(text)
-  const now = nowChile()   // ← siempre hora chilena
-  const td  = todayStr()
-
-  const dateStr = (d: Date) => d.toLocaleDateString('en-CA')  // YYYY-MM-DD
+  const t  = normalize(text)
+  const td = todayStr()  // YYYY-MM-DD en hora Chile, fiable
 
   if (t.includes('hoy'))   return { from: td, to: td, label: 'hoy' }
-  if (t.includes('ayer')) {
-    const d = new Date(now); d.setDate(d.getDate() - 1)
-    return { from: dateStr(d), to: dateStr(d), label: 'ayer' }
-  }
-  if (t.includes('manana')) {
-    const d = new Date(now); d.setDate(d.getDate() + 1)
-    return { from: dateStr(d), to: dateStr(d), label: 'mañana' }
-  }
+  if (t.includes('ayer'))  return { from: shiftDate(td,-1), to: shiftDate(td,-1), label: 'ayer' }
+  if (t.includes('manana')) return { from: shiftDate(td,1), to: shiftDate(td,1), label: 'mañana' }
+
+  // Semana: calcular lunes de la semana actual en base a la fecha chilena
+  const [y,m,d] = td.split('-').map(Number)
+  const dayOfWeek = new Date(Date.UTC(y,m-1,d)).getUTCDay() || 7  // 1=lun, 7=dom
+
   if (/semana pasada|ultima semana/.test(t)) {
-    const day = now.getDay() || 7
-    const mon = new Date(now); mon.setDate(now.getDate() - day - 6)
-    const sun = new Date(now); sun.setDate(now.getDate() - day)
-    return { from: dateStr(mon), to: dateStr(sun), label: 'la semana pasada' }
+    const lun = shiftDate(td, -(dayOfWeek + 6))
+    const dom = shiftDate(td, -(dayOfWeek))
+    return { from: lun, to: dom, label: 'la semana pasada' }
   }
   if (/proxima semana|semana que viene|semana siguiente/.test(t)) {
-    const day = now.getDay() || 7
-    const mon = new Date(now); mon.setDate(now.getDate() - day + 8)
-    const sun = new Date(now); sun.setDate(now.getDate() - day + 14)
-    return { from: dateStr(mon), to: dateStr(sun), label: 'la próxima semana' }
+    const lun = shiftDate(td, 8 - dayOfWeek)
+    const dom = shiftDate(td, 14 - dayOfWeek)
+    return { from: lun, to: dom, label: 'la próxima semana' }
   }
   if (/esta semana|semana/.test(t)) {
-    const day = now.getDay() || 7
-    const mon = new Date(now); mon.setDate(now.getDate() - day + 1)
-    return { from: dateStr(mon), to: td, label: 'esta semana' }
+    const lun = shiftDate(td, 1 - dayOfWeek)
+    return { from: lun, to: td, label: 'esta semana' }
   }
   if (/mes pasado|ultimo mes/.test(t)) {
-    const d    = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const last = new Date(now.getFullYear(), now.getMonth(), 0)
-    return { from: dateStr(d), to: dateStr(last), label: 'el mes pasado' }
+    const firstPrev = `${m === 1 ? y-1 : y}-${pad(m===1?12:m-1)}-01`
+    const lastPrev  = shiftDate(`${y}-${pad(m)}-01`, -1)
+    return { from: firstPrev, to: lastPrev, label: 'el mes pasado' }
   }
   if (/este mes|mes/.test(t)) {
-    return { from: `${now.getFullYear()}-${pad(now.getMonth()+1)}-01`, to: td, label: 'este mes' }
+    return { from: `${y}-${pad(m)}-01`, to: td, label: 'este mes' }
   }
   // Fecha específica: "3 de junio"
   const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
@@ -346,23 +347,18 @@ Deno.serve(async (req) => {
   // Log completo para debug
   console.log('[wa-bot] webhook:', body.typeWebhook, JSON.stringify(body).slice(0, 300))
 
-  // Aceptar mensajes entrantes Y salientes (admin escribe a su propio número)
-  const isIncoming = body.typeWebhook === 'incomingMessageReceived'
-  const isOutgoing = body.typeWebhook === 'outgoingMessageReceived'
-  if (!isIncoming && !isOutgoing) return new Response('ok')
+  // Solo mensajes entrantes (outgoing desactivado en Green API para evitar loops)
+  if (body.typeWebhook !== 'incomingMessageReceived') return new Response('ok')
   if (body.messageData?.typeMessage !== 'textMessage') return new Response('ok')
 
   // Extraer texto del mensaje
   const messageText = (body.messageData?.textMessageData?.textMessage as string || '').trim()
   if (!messageText) return new Response('ok')
 
-  // Ignorar mensajes que vienen del bot mismo (anti-loop: empiezan con emoji de respuesta)
-  if (messageText.startsWith('📊') || messageText.startsWith('⏱') ||
-      messageText.startsWith('⚠️') || messageText.startsWith('✅') ||
-      messageText.startsWith('❌') || messageText.startsWith('📋') ||
-      messageText.startsWith('🗓') || messageText.startsWith('📅') ||
-      messageText.startsWith('👥') || messageText.startsWith('🔔') ||
-      messageText.startsWith('No entendí')) return new Response('ok')
+  // Anti-loop: ignorar respuestas del propio bot (cubrir TODOS los formatos posibles)
+  const BOT_PREFIXES = ['📊','⏱','⚠️','✅','❌','📋','🗓','📅','👥','🔔','⏰',
+                        'Sin turnos','Sin turno','No entendí','Hay ','Error al']
+  if (BOT_PREFIXES.some(p => messageText.startsWith(p))) return new Response('ok')
 
   // Destino de la respuesta: siempre al número del admin (self-chat)
   const replyTo = `${ADMIN_WA}@c.us`
