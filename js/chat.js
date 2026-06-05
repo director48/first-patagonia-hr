@@ -238,9 +238,8 @@ window.initChat = function initChat(adminProfile) {
     const [{ data: scheds }, { data: clocks }, { count: dlP }, { count: heP }] = await Promise.all([
       sb.from('schedules')
         .select('employee_id,shift_start,shift_end,shift_type,profiles(full_name)')
-        .eq('date', td).neq('shift_type', 'libre')
-        .not('shift_start', 'is', null),   // BUG-3 fix
-      sb.from('attendance_records')
+        .eq('date', td).eq('day_type', 'turno'),   // BUG-3 fix
+      sb.from('clock_records')
         .select('employee_id,clock_in,clock_out').eq('date', td),
       sb.from('time_off_requests').select('*', { count: 'exact', head: true }).eq('status', 'pendiente'),
       sb.from('overtime_records').select('*', { count: 'exact', head: true }).eq('status', 'pendiente')
@@ -273,7 +272,7 @@ window.initChat = function initChat(adminProfile) {
     const emp = extractEmployee(text)
     const { from, to, label } = extractDateRange(text)
 
-    let q = sb.from('attendance_records')
+    let q = sb.from('clock_records')
       .select('employee_id,clock_in,clock_out,date,profiles(full_name)')
       .gte('date', from).lte('date', to).not('clock_out', 'is', null)
     if (emp) q = q.eq('employee_id', emp.id)
@@ -309,13 +308,13 @@ window.initChat = function initChat(adminProfile) {
     let sq = sb.from('schedules')
       .select('employee_id,date,shift_start,profiles(full_name)')
       .gte('date', from).lte('date', to)
-      .not('shift_start', 'is', null).neq('shift_type', 'libre')
+      .not('shift_start', 'is', null).eq('day_type', 'turno')
     if (emp) sq = sq.eq('employee_id', emp.id)
     const { data: scheds } = await sq
     if (!scheds?.length) return `No hay turnos registrados para ${label}.`
 
     const ids = [...new Set(scheds.map(s => s.employee_id))]
-    const { data: recs } = await sb.from('attendance_records')
+    const { data: recs } = await sb.from('clock_records')
       .select('employee_id,date,clock_in')
       .in('employee_id', ids).gte('date', from).lte('date', to)
       .not('clock_in', 'is', null)
@@ -348,8 +347,7 @@ window.initChat = function initChat(adminProfile) {
     let q = sb.from('schedules')
       .select('employee_id,date,shift_start,shift_end,shift_type,profiles(full_name)')
       .gte('date', from).lte('date', to)
-      .neq('shift_type', 'libre')
-      .not('shift_start', 'is', null)    // BUG-4 fix
+      .eq('day_type', 'turno')    // BUG-4 fix
       .order('date')                     // BUG-9 fix: primero por fecha
       .order('shift_start')
     if (emp) q = q.eq('employee_id', emp.id)
@@ -359,7 +357,7 @@ window.initChat = function initChat(adminProfile) {
         ? `No hay turno de ${emp.full_name} para ${label}.`
         : `Sin turnos asignados para ${label}.`
 
-    const { data: clocks } = await sb.from('attendance_records')
+    const { data: clocks } = await sb.from('clock_records')
       .select('employee_id,date,clock_in,clock_out').gte('date', from).lte('date', to)
     // BUG-2 fix: clave employee_id+date para evitar colisión en rangos multi-día
     const ckMap = {}
@@ -380,11 +378,11 @@ window.initChat = function initChat(adminProfile) {
     const { data: scheds } = await sb.from('schedules')
       .select('employee_id,date,profiles(full_name)')
       .gte('date', from).lte('date', to)
-      .not('shift_start', 'is', null).neq('shift_type', 'libre')
+      .not('shift_start', 'is', null).eq('day_type', 'turno')
     if (!scheds?.length) return `No hay turnos para ${label}.`
 
     const ids = [...new Set(scheds.map(s => s.employee_id))]
-    const { data: recs } = await sb.from('attendance_records')
+    const { data: recs } = await sb.from('clock_records')
       .select('employee_id,date').in('employee_id', ids).gte('date', from).lte('date', to)
 
     const marked = new Set((recs || []).map(r => `${r.employee_id}_${r.date}`))

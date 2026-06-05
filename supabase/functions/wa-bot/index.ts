@@ -41,7 +41,9 @@ async function sendWA(chatId: string, message: string): Promise<void> {
 }
 
 // ── Utilidades ────────────────────────────────────────────────────────────────
-const todayStr = () => new Date().toISOString().slice(0, 10)
+// Zona horaria Chile — el server corre en UTC, hay que convertir todo
+const nowChile = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }))
+const todayStr = () => nowChile().toLocaleDateString('en-CA')   // YYYY-MM-DD en hora chilena
 const pad = (n: number) => String(n).padStart(2, '0')
 
 function minsToStr(m: number): string {
@@ -80,42 +82,42 @@ function extractEmployee(text: string, employees: any[]) {
 }
 
 function extractDateRange(text: string) {
-  const t  = normalize(text)
-  const now = new Date()
+  const t   = normalize(text)
+  const now = nowChile()   // ← siempre hora chilena
   const td  = todayStr()
+
+  const dateStr = (d: Date) => d.toLocaleDateString('en-CA')  // YYYY-MM-DD
 
   if (t.includes('hoy'))   return { from: td, to: td, label: 'hoy' }
   if (t.includes('ayer')) {
     const d = new Date(now); d.setDate(d.getDate() - 1)
-    const s = d.toISOString().slice(0, 10)
-    return { from: s, to: s, label: 'ayer' }
+    return { from: dateStr(d), to: dateStr(d), label: 'ayer' }
   }
   if (t.includes('manana')) {
     const d = new Date(now); d.setDate(d.getDate() + 1)
-    const s = d.toISOString().slice(0, 10)
-    return { from: s, to: s, label: 'mañana' }
+    return { from: dateStr(d), to: dateStr(d), label: 'mañana' }
   }
   if (/semana pasada|ultima semana/.test(t)) {
     const day = now.getDay() || 7
     const mon = new Date(now); mon.setDate(now.getDate() - day - 6)
     const sun = new Date(now); sun.setDate(now.getDate() - day)
-    return { from: mon.toISOString().slice(0,10), to: sun.toISOString().slice(0,10), label: 'la semana pasada' }
+    return { from: dateStr(mon), to: dateStr(sun), label: 'la semana pasada' }
   }
   if (/proxima semana|semana que viene|semana siguiente/.test(t)) {
     const day = now.getDay() || 7
     const mon = new Date(now); mon.setDate(now.getDate() - day + 8)
     const sun = new Date(now); sun.setDate(now.getDate() - day + 14)
-    return { from: mon.toISOString().slice(0,10), to: sun.toISOString().slice(0,10), label: 'la próxima semana' }
+    return { from: dateStr(mon), to: dateStr(sun), label: 'la próxima semana' }
   }
   if (/esta semana|semana/.test(t)) {
     const day = now.getDay() || 7
     const mon = new Date(now); mon.setDate(now.getDate() - day + 1)
-    return { from: mon.toISOString().slice(0,10), to: td, label: 'esta semana' }
+    return { from: dateStr(mon), to: td, label: 'esta semana' }
   }
   if (/mes pasado|ultimo mes/.test(t)) {
     const d    = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const last = new Date(now.getFullYear(), now.getMonth(), 0)
-    return { from: d.toISOString().slice(0,10), to: last.toISOString().slice(0,10), label: 'el mes pasado' }
+    return { from: dateStr(d), to: dateStr(last), label: 'el mes pasado' }
   }
   if (/este mes|mes/.test(t)) {
     return { from: `${now.getFullYear()}-${pad(now.getMonth()+1)}-01`, to: td, label: 'este mes' }
@@ -139,8 +141,8 @@ async function queryResumen(): Promise<string> {
   const [{ data: scheds }, { data: clocks }, { count: dlP }, { count: heP }] = await Promise.all([
     sb.from('schedules')
       .select('employee_id,shift_start,shift_end,profiles(full_name)')
-      .eq('date', td).neq('shift_type','libre').not('shift_start','is',null),
-    sb.from('attendance_records')
+      .eq('date', td).eq('day_type', 'turno'),
+    sb.from('clock_records')
       .select('employee_id,clock_in,clock_out').eq('date', td),
     sb.from('time_off_requests').select('*',{count:'exact',head:true}).eq('status','pendiente'),
     sb.from('overtime_records').select('*',{count:'exact',head:true}).eq('status','pendiente')
@@ -174,7 +176,7 @@ async function queryHoras(text: string): Promise<string> {
   const emp = extractEmployee(text, employees)
   const { from, to, label } = extractDateRange(text)
 
-  let q = (sb.from('attendance_records') as any)
+  let q = (sb.from('clock_records') as any)
     .select('employee_id,clock_in,clock_out,profiles(full_name)')
     .gte('date', from).lte('date', to).not('clock_out','is',null)
   if (emp) q = q.eq('employee_id', emp.id)
@@ -201,13 +203,13 @@ async function queryTardes(text: string): Promise<string> {
 
   let sq = (sb.from('schedules') as any)
     .select('employee_id,date,shift_start,profiles(full_name)')
-    .gte('date',from).lte('date',to).not('shift_start','is',null).neq('shift_type','libre')
+    .gte('date',from).lte('date',to).not('shift_start','is',null).eq('day_type','turno')
   if (emp) sq = sq.eq('employee_id', emp.id)
   const { data: scheds } = await sq
   if (!scheds?.length) return `Sin turnos para ${label}.`
 
   const ids = [...new Set(scheds.map((s:any)=>s.employee_id))]
-  const { data: recs } = await sb.from('attendance_records')
+  const { data: recs } = await sb.from('clock_records')
     .select('employee_id,date,clock_in').in('employee_id',ids)
     .gte('date',from).lte('date',to).not('clock_in','is',null)
 
@@ -237,14 +239,14 @@ async function queryTurnos(text: string): Promise<string> {
 
   let q = (sb.from('schedules') as any)
     .select('employee_id,date,shift_start,shift_end,profiles(full_name)')
-    .gte('date',from).lte('date',to).neq('shift_type','libre').not('shift_start','is',null)
+    .gte('date',from).lte('date',to).eq('day_type', 'turno')
     .order('date').order('shift_start')
   if (emp) q = q.eq('employee_id', emp.id)
   const { data } = await q
   if (!data?.length)
     return emp ? `Sin turno de ${emp.full_name} para ${label}.` : `Sin turnos para ${label}.`
 
-  const { data: clocks } = await sb.from('attendance_records')
+  const { data: clocks } = await sb.from('clock_records')
     .select('employee_id,date,clock_in,clock_out').gte('date',from).lte('date',to)
   const ckMap: Record<string,any> = {}
   for (const c of clocks||[]) ckMap[`${c.employee_id}_${c.date}`] = c
@@ -263,11 +265,11 @@ async function queryAusencias(text: string): Promise<string> {
   const { from, to, label } = extractDateRange(text)
   const { data: scheds } = await sb.from('schedules')
     .select('employee_id,date,profiles(full_name)')
-    .gte('date',from).lte('date',to).not('shift_start','is',null).neq('shift_type','libre')
+    .gte('date',from).lte('date',to).not('shift_start','is',null).eq('day_type','turno')
   if (!scheds?.length) return `Sin turnos para ${label}.`
 
   const ids = [...new Set(scheds.map((s:any)=>s.employee_id))]
-  const { data: recs } = await sb.from('attendance_records')
+  const { data: recs } = await sb.from('clock_records')
     .select('employee_id,date').in('employee_id',ids).gte('date',from).lte('date',to)
 
   const marked = new Set((recs||[]).map((r:any)=>`${r.employee_id}_${r.date}`))
@@ -341,25 +343,38 @@ Deno.serve(async (req) => {
   let body: any
   try { body = await req.json() } catch { return new Response('ok') }
 
-  // Solo procesar mensajes entrantes de texto
-  if (body.typeWebhook !== 'incomingMessageReceived') return new Response('ok')
+  // Log completo para debug
+  console.log('[wa-bot] webhook:', body.typeWebhook, JSON.stringify(body).slice(0, 300))
+
+  // Aceptar mensajes entrantes Y salientes (admin escribe a su propio número)
+  const isIncoming = body.typeWebhook === 'incomingMessageReceived'
+  const isOutgoing = body.typeWebhook === 'outgoingMessageReceived'
+  if (!isIncoming && !isOutgoing) return new Response('ok')
   if (body.messageData?.typeMessage !== 'textMessage') return new Response('ok')
 
-  const sender      = body.senderData?.sender as string
+  // Extraer texto del mensaje
   const messageText = (body.messageData?.textMessageData?.textMessage as string || '').trim()
+  if (!messageText) return new Response('ok')
 
-  if (!sender || !messageText) return new Response('ok')
+  // Ignorar mensajes que vienen del bot mismo (anti-loop: empiezan con emoji de respuesta)
+  if (messageText.startsWith('📊') || messageText.startsWith('⏱') ||
+      messageText.startsWith('⚠️') || messageText.startsWith('✅') ||
+      messageText.startsWith('❌') || messageText.startsWith('📋') ||
+      messageText.startsWith('🗓') || messageText.startsWith('📅') ||
+      messageText.startsWith('👥') || messageText.startsWith('🔔') ||
+      messageText.startsWith('No entendí')) return new Response('ok')
 
-  // Responde a cualquier mensaje entrante (app interna — solo el admin conoce el número)
-  console.log('[wa-bot] mensaje de:', sender, '→', messageText.slice(0, 60))
+  // Destino de la respuesta: siempre al número del admin (self-chat)
+  const replyTo = `${ADMIN_WA}@c.us`
+  console.log('[wa-bot] procesando:', messageText.slice(0, 60), '→ reply to:', replyTo)
 
   // Procesar y responder
   try {
     const response = await dispatch(messageText)
-    await sendWA(sender, response)
+    await sendWA(replyTo, response)
   } catch (e) {
     console.error('[wa-bot]', e)
-    await sendWA(sender, '❌ Error al consultar. Intenta de nuevo.')
+    await sendWA(replyTo, '❌ Error al consultar. Intenta de nuevo.')
   }
 
   return new Response('ok')
