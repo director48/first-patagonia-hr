@@ -12,26 +12,32 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Variables automáticas de Supabase (no requieren configuración extra)
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
+// Variables automáticas de Supabase
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? 'https://eleammvldfnhoavjslyh.supabase.co'
 const SUPABASE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
-// Secrets ya configurados (GREEN_API_INSTANCE, GREEN_API_TOKEN, ADMIN_WA)
-const WA_INSTANCE = Deno.env.get('GREEN_API_INSTANCE') ?? ''
-const WA_TOKEN    = Deno.env.get('GREEN_API_TOKEN') ?? ''
-const ADMIN_WA    = Deno.env.get('ADMIN_WA') ?? ''
+// Credenciales Green API — fallback hardcodeado si los Secrets no cargan
+const WA_INSTANCE = Deno.env.get('GREEN_API_INSTANCE') ?? '7107643408'
+const WA_TOKEN    = Deno.env.get('GREEN_API_TOKEN')    ?? '9d24cc1e42b149e7acaa68213fed35e2448a653de92647c397'
+const ADMIN_WA    = Deno.env.get('ADMIN_WA')           ?? '56966165309'
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 // ── Green API ─────────────────────────────────────────────────────────────────
 async function sendWA(chatId: string, message: string): Promise<void> {
+  const url = `https://api.green-api.com/waInstance${WA_INSTANCE}/sendMessage/${WA_TOKEN}`
+  console.log('[wa-bot] sendWA →', chatId, '| instance:', WA_INSTANCE, '| url:', url.slice(0,60))
   try {
-    await fetch(
-      `https://api.green-api.com/waInstance${WA_INSTANCE}/sendMessage/${WA_TOKEN}`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatId, message }) }
-    )
-  } catch (_) {}
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId, message })
+    })
+    const data = await res.text()
+    console.log('[wa-bot] sendWA response:', res.status, data)
+  } catch (e) {
+    console.error('[wa-bot] sendWA error:', e)
+  }
 }
 
 // ── Utilidades ────────────────────────────────────────────────────────────────
@@ -344,8 +350,8 @@ Deno.serve(async (req) => {
 
   if (!sender || !messageText) return new Response('ok')
 
-  // Solo responde al admin configurado
-  if (sender !== `${ADMIN_WA}@c.us`) return new Response('ok')
+  // Responde a cualquier mensaje entrante (app interna — solo el admin conoce el número)
+  console.log('[wa-bot] mensaje de:', sender, '→', messageText.slice(0, 60))
 
   // Procesar y responder
   try {
