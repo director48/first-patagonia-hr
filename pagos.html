@@ -223,9 +223,9 @@
 
   <div id="toast-container"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/client.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/chat.js?v=2"></script>
+  <script src="js/client.js?v=3"></script>
+  <script src="js/auth.js?v=3"></script>
+  <script src="js/chat.js?v=3"></script>
   <script>
     let profile = null
     let employees = []
@@ -238,7 +238,7 @@
       const now = new Date()
       for (let i = -1; i <= 11; i++) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-        const val = d.toISOString().split('T')[0]
+        const val = localDate(d)
         const lbl = d.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
         const opt = document.createElement('option')
         opt.value = val
@@ -259,10 +259,10 @@
       const period = getPeriod()
       // Período: primer y último día del mes
       const start = period
-      const end = new Date(new Date(period).getFullYear(), new Date(period).getMonth() + 1, 0).toISOString().split('T')[0]
+      const end = localDate(new Date(new Date(period).getFullYear(), new Date(period).getMonth() + 1, 0))
 
       const { data } = await sb.from('payments')
-        .select('*, profiles(full_name, position)')
+        .select('*, profiles!employee_id(full_name, position)')
         .gte('period', start).lte('period', end)
         .order('created_at', { ascending: false })
 
@@ -388,8 +388,8 @@
       const period   = getPeriod()
       const firstDay = period
       const d = new Date(period + 'T12:00:00')
-      const lastDay  = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0]
-      const todayStr = new Date().toISOString().split('T')[0]
+      const lastDay  = localDate(new Date(d.getFullYear(), d.getMonth() + 1, 0))
+      const todayStr = localDate()
 
       document.getElementById('hoursSectionTitle').textContent =
         `Resumen de horas · ${d.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}`

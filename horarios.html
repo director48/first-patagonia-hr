@@ -302,9 +302,9 @@
   <div id="toast-container"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/client.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/chat.js?v=2"></script>
+  <script src="js/client.js?v=3"></script>
+  <script src="js/auth.js?v=3"></script>
+  <script src="js/chat.js?v=3"></script>
   <script>
     let profile = null
     let employees = []
@@ -316,7 +316,7 @@
     function changeWeek(dir) {
       const d = new Date(currentWeekBase + 'T12:00:00')
       d.setDate(d.getDate() + dir * 7)
-      currentWeekBase = d.toISOString().split('T')[0]
+      currentWeekBase = localDate(d)
       loadWeek()
     }
 
@@ -721,7 +721,7 @@
       let current = new Date(start + 'T12:00:00')
 
       for (let i = 0; i < total; i++) {
-        const d = current.toISOString().split('T')[0]
+        const d = localDate(current)
         daySchedules.push({
           date: d,
           in:   prev[i]?.in  || '07:30',
@@ -870,12 +870,12 @@
           for (let w = 0; w < work; w++) {
             const idx = c * work + w
             const day = daySchedules[idx] || daySchedules[w % daySchedules.length]
-            records.push({ employee_id: emp.id, date: current.toISOString().split('T')[0],
+            records.push({ employee_id: emp.id, date: localDate(current),
               day_type: 'turno', shift_start: day.in, shift_end: day.out, notes: '', created_by: profile.id })
             current.setDate(current.getDate() + 1)
           }
           for (let o = 0; o < off; o++) {
-            records.push({ employee_id: emp.id, date: current.toISOString().split('T')[0],
+            records.push({ employee_id: emp.id, date: localDate(current),
               day_type: 'libre', shift_start: null, shift_end: null, notes: '', created_by: profile.id })
             current.setDate(current.getDate() + 1)
           }

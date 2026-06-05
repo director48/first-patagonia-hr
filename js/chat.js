@@ -142,7 +142,7 @@ window.initChat = function initChat(adminProfile) {
     .then(({ data }) => { empCache = data || [] })
 
   // ── Utilidades ───────────────────────────────────────────────────────────────
-  const todayStr = () => new Date().toISOString().slice(0, 10)
+  const todayStr = () => localDate()
   const pad = n => String(n).padStart(2, '0')
 
   function minsToStr(m) {
@@ -183,36 +183,36 @@ window.initChat = function initChat(adminProfile) {
     if (t.includes('hoy'))  return { from: td, to: td, label: 'hoy' }
     if (t.includes('ayer')) {
       const d = new Date(now); d.setDate(d.getDate() - 1)
-      const s = d.toISOString().slice(0, 10)
+      const s = localDate(d)
       return { from: s, to: s, label: 'ayer' }
     }
     if (t.includes('manana')) {
       const d = new Date(now); d.setDate(d.getDate() + 1)
-      const s = d.toISOString().slice(0, 10)
+      const s = localDate(d)
       return { from: s, to: s, label: 'mañana' }
     }
     if (/semana pasada|ultima semana/.test(t)) {
       const day = now.getDay() || 7
       const mon = new Date(now); mon.setDate(now.getDate() - day - 6)
       const sun = new Date(now); sun.setDate(now.getDate() - day)
-      return { from: mon.toISOString().slice(0, 10), to: sun.toISOString().slice(0, 10), label: 'la semana pasada' }
+      return { from: localDate(mon), to: localDate(sun), label: 'la semana pasada' }
     }
     // BUG-10 fix: manejar "próxima semana" antes de "esta semana"
     if (/proxima semana|semana que viene|semana siguiente/.test(t)) {
       const day = now.getDay() || 7
       const nextMon = new Date(now); nextMon.setDate(now.getDate() - day + 8)
       const nextSun = new Date(now); nextSun.setDate(now.getDate() - day + 14)
-      return { from: nextMon.toISOString().slice(0, 10), to: nextSun.toISOString().slice(0, 10), label: 'la próxima semana' }
+      return { from: localDate(nextMon), to: localDate(nextSun), label: 'la próxima semana' }
     }
     if (/esta semana|semana/.test(t)) {
       const day = now.getDay() || 7
       const mon = new Date(now); mon.setDate(now.getDate() - day + 1)
-      return { from: mon.toISOString().slice(0, 10), to: td, label: 'esta semana' }
+      return { from: localDate(mon), to: td, label: 'esta semana' }
     }
     if (/mes pasado|ultimo mes/.test(t)) {
       const d = new Date(now.getFullYear(), now.getMonth() - 1, 1)
       const last = new Date(now.getFullYear(), now.getMonth(), 0)
-      return { from: d.toISOString().slice(0, 10), to: last.toISOString().slice(0, 10), label: 'el mes pasado' }
+      return { from: localDate(d), to: localDate(last), label: 'el mes pasado' }
     }
     if (/este mes|mes/.test(t)) {
       const first = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`

@@ -214,7 +214,7 @@ function typeLabel(type) {
 }
 
 function today() {
-  return new Date().toISOString().split('T')[0]
+  return localDate()
 }
 
 // ── Reglas de fichaje ─────────────────────────────────────────
@@ -287,6 +287,6 @@ function getWeekDates(baseDate) {
   return Array.from({ length: 7 }, (_, i) => {
     const dt = new Date(monday)
     dt.setDate(monday.getDate() + i)
-    return dt.toISOString().split('T')[0]
+    return localDate(dt)
   })
 }

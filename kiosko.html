@@ -505,7 +505,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/client.js"></script>
+  <script src="js/client.js?v=3"></script>
   <script>
     let currentProfile   = null
     let clockRecord      = null
@@ -662,7 +662,7 @@
         currentProfile = prof
       }
 
-      const todayStr = new Date().toISOString().split('T')[0]
+      const todayStr = localDate()
       const [{ data: clock }, { data: sched }] = await Promise.all([
         sb.from('clock_records').select('*').eq('employee_id', currentProfile.id).eq('date', todayStr).maybeSingle(),
         sb.from('schedules').select('*').eq('employee_id', currentProfile.id).eq('date', todayStr).maybeSingle()
@@ -724,7 +724,7 @@
       }
 
       // Obtener fichaje y turno asignado de hoy
-      const todayStr = new Date().toISOString().split('T')[0]
+      const todayStr = localDate()
       const [{ data: clock }, { data: sched }] = await Promise.all([
         sb.from('clock_records').select('*').eq('employee_id', profile.id).eq('date', todayStr).maybeSingle(),
         sb.from('schedules').select('*').eq('employee_id', profile.id).eq('date', todayStr).maybeSingle()
@@ -763,7 +763,7 @@
       if (!clockRecord || !clockRecord.clock_in) {
         // ── Verificar ventana de entrada ────────────────────────
         if (currentSchedule?.shift_start && currentSchedule.day_type === 'turno') {
-          const todayDate  = new Date().toISOString().split('T')[0]
+          const todayDate  = localDate()
           const schedStart = new Date(`${todayDate}T${currentSchedule.shift_start.slice(0,5)}:00`)
           const minEarly   = Math.round((schedStart - new Date()) / 60000)
 
@@ -810,7 +810,7 @@
           // Verificar si intenta salir demasiado temprano (>60 min antes del fin del turno)
           let exitBlocked = false
           if (currentSchedule?.shift_end) {
-            const todayDate = new Date().toISOString().split('T')[0]
+            const todayDate = localDate()
             const schedEnd  = new Date(`${todayDate}T${currentSchedule.shift_end.slice(0,5)}:00`)
             const minUntilEnd = Math.round((schedEnd - new Date()) / 60000)
 
@@ -845,7 +845,7 @@
       showState('state-loading')
 
       const now      = new Date()
-      const todayStr = now.toISOString().split('T')[0]
+      const todayStr = localDate(now)
 
       if (!clockRecord || !clockRecord.clock_in) {
         // ── ENTRADA — calcular hora efectiva y detectar tarde ───
@@ -1145,7 +1145,7 @@
         const overHours = Math.max(0.5, Math.round(overMin / 30) * 0.5)  // mínimo 0.5h, redondeo a 0.5h
         await sb.from('overtime_records').insert({
           employee_id: currentProfile.id,
-          date:        now.toISOString().split('T')[0],
+          date:        localDate(now),
           hours:       overHours,
           reason:      note,
           status:      'pendiente'
