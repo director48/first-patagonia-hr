@@ -237,8 +237,8 @@ window.initChat = function initChat(adminProfile) {
     const td = todayStr()
     const [{ data: scheds }, { data: clocks }, { count: dlP }, { count: heP }] = await Promise.all([
       sb.from('schedules')
-        .select('employee_id,shift_start,shift_end,shift_type,profiles(full_name)')
-        .eq('date', td).eq('day_type', 'turno'),   // BUG-3 fix
+        .select('employee_id,shift_start,shift_end,profiles!employee_id(full_name)')
+        .eq('date', td).eq('day_type', 'turno'),
       sb.from('clock_records')
         .select('employee_id,clock_in,clock_out').eq('date', td),
       sb.from('time_off_requests').select('*', { count: 'exact', head: true }).eq('status', 'pendiente'),
@@ -273,7 +273,7 @@ window.initChat = function initChat(adminProfile) {
     const { from, to, label } = extractDateRange(text)
 
     let q = sb.from('clock_records')
-      .select('employee_id,clock_in,clock_out,date,profiles(full_name)')
+      .select('employee_id,clock_in,clock_out,date,profiles!employee_id(full_name)')
       .gte('date', from).lte('date', to).not('clock_out', 'is', null)
     if (emp) q = q.eq('employee_id', emp.id)
     const { data } = await q
@@ -306,7 +306,7 @@ window.initChat = function initChat(adminProfile) {
     const emp = extractEmployee(text)
 
     let sq = sb.from('schedules')
-      .select('employee_id,date,shift_start,profiles(full_name)')
+      .select('employee_id,date,shift_start,profiles!employee_id(full_name)')
       .gte('date', from).lte('date', to)
       .not('shift_start', 'is', null).eq('day_type', 'turno')
     if (emp) sq = sq.eq('employee_id', emp.id)
@@ -345,9 +345,9 @@ window.initChat = function initChat(adminProfile) {
     const emp = extractEmployee(text)
 
     let q = sb.from('schedules')
-      .select('employee_id,date,shift_start,shift_end,shift_type,profiles(full_name)')
+      .select('employee_id,date,shift_start,shift_end,profiles!employee_id(full_name)')
       .gte('date', from).lte('date', to)
-      .eq('day_type', 'turno')    // BUG-4 fix
+      .eq('day_type', 'turno')
       .order('date')                     // BUG-9 fix: primero por fecha
       .order('shift_start')
     if (emp) q = q.eq('employee_id', emp.id)
@@ -376,7 +376,7 @@ window.initChat = function initChat(adminProfile) {
   async function queryAusencias(text) {
     const { from, to, label } = extractDateRange(text)
     const { data: scheds } = await sb.from('schedules')
-      .select('employee_id,date,profiles(full_name)')
+      .select('employee_id,date,profiles!employee_id(full_name)')
       .gte('date', from).lte('date', to)
       .not('shift_start', 'is', null).eq('day_type', 'turno')
     if (!scheds?.length) return `No hay turnos para ${label}.`
@@ -412,10 +412,10 @@ window.initChat = function initChat(adminProfile) {
   async function querySolicitudes() {
     const [{ data: dl }, { data: he }] = await Promise.all([
       sb.from('time_off_requests')
-        .select('start_date,end_date,request_type,profiles(full_name)')
+        .select('start_date,end_date,type,profiles!employee_id(full_name)')
         .eq('status', 'pendiente').order('start_date'),
       sb.from('overtime_records')
-        .select('date,hours,profiles(full_name)')
+        .select('date,hours,profiles!employee_id(full_name)')
         .eq('status', 'pendiente').order('date')
     ])
     if (!dl?.length && !he?.length) return '✅ No hay solicitudes pendientes.'
@@ -425,7 +425,7 @@ window.initChat = function initChat(adminProfile) {
       msg += `📅 Días libres pendientes (${dl.length}):\n`
       msg += dl.map(r =>
         `  • ${r.profiles?.full_name} — ${r.start_date}` +
-        `${r.end_date !== r.start_date ? ' → ' + r.end_date : ''} (${r.request_type})`
+        `${r.end_date !== r.start_date ? ' → ' + r.end_date : ''} (${typeLabel(r.type)})`
       ).join('\n')
     }
     if (he?.length) {
