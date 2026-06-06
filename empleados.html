@@ -323,24 +323,40 @@
         if (!email) { showToast('El correo es obligatorio', 'error'); btn.disabled = false; return }
         if (password.length < 6) { showToast('La contraseña debe tener al menos 6 caracteres', 'error'); btn.disabled = false; return }
 
+        // Guardar la sesión del admin ANTES de signUp(): si la confirmación por
+        // email está desactivada, signUp() inicia sesión como el nuevo usuario y
+        // reemplaza la sesión actual → el admin perdería sus permisos.
+        const { data: { session: adminSession } } = await sb.auth.getSession()
+        const restoreAdmin = async () => {
+          if (adminSession) {
+            await sb.auth.setSession({
+              access_token:  adminSession.access_token,
+              refresh_token: adminSession.refresh_token
+            })
+          }
+        }
+
         const { data: authData, error: signUpError } = await sb.auth.signUp({
           email, password,
           options: { data: { full_name: name, role } }
         })
 
         if (signUpError) {
+          await restoreAdmin()
           showToast(signUpError.message, 'error')
           btn.disabled = false
           return
         }
 
         if (!authData?.user?.id) {
+          await restoreAdmin()
           showToast('Este correo ya está registrado en el sistema', 'error')
           btn.disabled = false
           return
         }
 
-        // Insertar perfil directamente con el ID del usuario recién creado
+        // Insertar el perfil mientras la sesión sigue siendo la del nuevo usuario
+        // (así pasa la política RLS de "insertar tu propio perfil", id = auth.uid()).
         const { error: profileError } = await sb.from('profiles').upsert({
           id: authData.user.id,
           full_name: name,
@@ -350,6 +366,9 @@
           phone,
           vacation_days_total: 15
         })
+
+        // Recién ahora restauramos la sesión del admin
+        await restoreAdmin()
 
         if (profileError) {
           showToast('Usuario creado pero error al guardar perfil: ' + profileError.message, 'error')

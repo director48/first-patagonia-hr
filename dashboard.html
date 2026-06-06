@@ -225,17 +225,28 @@
       const { data } = await sb.from('schedules').select('*')
         .eq('employee_id', p.id).eq('date', todayStr).maybeSingle()
 
-      if (data) {
+      if (!data) return
+
+      // Día libre (o sin horario asignado): evitar leer shift_start null
+      if (data.day_type === 'libre' || !data.shift_start) {
         document.getElementById('todayShift').innerHTML = `
           <div style="text-align:center;padding:.75rem 0">
-            <div style="font-family:var(--font-serif);font-size:2.4rem;font-weight:300;color:var(--teal);line-height:1">
-              ${data.shift_start.slice(0,5)} – ${data.shift_end.slice(0,5)}
-            </div>
-            <div class="text-muted text-sm mt-1">Turno asignado</div>
-            ${data.notes ? `<div class="text-muted text-sm mt-2" style="font-style:italic">${data.notes}</div>` : ''}
+            <div style="font-family:var(--font-serif);font-size:2rem;font-weight:300;color:var(--teal);line-height:1">Día libre</div>
+            <div class="text-muted text-sm mt-1">Hoy descansas 🌴</div>
           </div>
         `
+        return
       }
+
+      document.getElementById('todayShift').innerHTML = `
+        <div style="text-align:center;padding:.75rem 0">
+          <div style="font-family:var(--font-serif);font-size:2.4rem;font-weight:300;color:var(--teal);line-height:1">
+            ${data.shift_start.slice(0,5)} – ${data.shift_end.slice(0,5)}
+          </div>
+          <div class="text-muted text-sm mt-1">Turno asignado</div>
+          ${data.notes ? `<div class="text-muted text-sm mt-2" style="font-style:italic">${data.notes}</div>` : ''}
+        </div>
+      `
     }
 
     async function loadRequests(p) {
