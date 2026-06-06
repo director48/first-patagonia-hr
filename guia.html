@@ -324,7 +324,7 @@ const SECTIONS = {
       title: 'Dashboard',
       subtitle: 'La primera pantalla al entrar. Muestra el estado del equipo en tiempo real.',
       steps: [
-        { icon: '1', label: 'Reloj en vivo', text: 'Siempre ves la hora actual. Tú también puedes registrar tu propia entrada y salida desde aquí.' },
+        { icon: '1', label: 'Reloj y estado de fichaje', text: 'Ves la hora actual y el estado de tu propio fichaje, en modo solo lectura. El registro de entrada y salida se realiza en el terminal de la entrada del hotel, no desde aquí.' },
         { icon: '2', c: 'teal', label: 'Estadísticas del equipo', text: 'Días libres disponibles, horas extras del mes, solicitudes pendientes y total de empleados activos.' },
         { icon: '3', c: 'green', label: 'Solicitudes pendientes', text: 'La tarjeta inferior derecha muestra qué solicitudes de días libres esperan tu aprobación. Clic en "Revisar solicitudes" para gestionarlas.' },
       ],
@@ -346,7 +346,7 @@ const SECTIONS = {
     {
       id: 'a-diaslibres',
       title: 'Días Libres',
-      subtitle: 'Gestiona todas las solicitudes de vacaciones, licencias médicas y permisos del equipo.',
+      subtitle: 'Gestiona las solicitudes de permisos médicos, personales y días compensatorios del equipo.',
       steps: [
         { icon: '1', label: 'Sección "Pendientes"', text: 'Al entrar ves todas las solicitudes que esperan tu revisión, con nombre del empleado, fechas, cantidad de días y motivo.' },
         { icon: '2', c: 'teal', label: 'Aprobar o rechazar', text: 'Los botones verde/rojo de cada fila abren un modal donde puedes agregar una nota opcional antes de decidir.' },
@@ -372,11 +372,11 @@ const SECTIONS = {
       title: 'Empleados',
       subtitle: 'Agrega nuevos colaboradores al sistema y actualiza sus datos en cualquier momento.',
       steps: [
-        { icon: '1', label: 'Agregar empleado', text: 'Clic en "+ Agregar empleado". Llena nombre, correo, contraseña temporal, cargo, área y días de vacaciones anuales.' },
+        { icon: '1', label: 'Agregar empleado', text: 'Clic en "+ Agregar empleado". Llena correo, contraseña temporal, nombre, rol, cargo, área y teléfono.' },
         { icon: '2', c: 'teal', label: 'Roles del sistema', text: '"Empleado" solo ve sus propios datos. "Administrador" tiene acceso completo. Puedes cambiar el rol en cualquier momento editando el perfil.' },
-        { icon: '3', c: 'green', label: 'Editar perfil', text: 'Clic en el botón "Editar" de cualquier fila para actualizar cargo, área, teléfono o días de vacaciones disponibles.' },
+        { icon: '3', c: 'green', label: 'PIN del kiosco', text: 'Al editar un empleado puedes asignarle (o generar) un PIN de 4 dígitos. Ese PIN es el que la persona usará para fichar en el terminal de la entrada — compártelo con ella.' },
       ],
-      tip: '<strong>Contraseña temporal:</strong> Comparte la contraseña con el empleado por WhatsApp o en persona. Ellos pueden cambiarla desde Supabase si la olvidan.',
+      tip: '<strong>Contraseña temporal:</strong> Compártela con el empleado por WhatsApp o en persona; podrá cambiarla luego. El PIN del kiosco se asigna al <em>editar</em> el empleado, no al crearlo.',
       demo: 'empleados-admin'
     },
   ],
@@ -385,14 +385,26 @@ const SECTIONS = {
     {
       id: 'e-dashboard',
       title: 'Dashboard',
-      subtitle: 'Tu pantalla principal. Lo primero que ves al entrar cada día.',
+      subtitle: 'Tu pantalla principal. Muestra tu turno de hoy, tu estado de fichaje y tus estadísticas.',
       steps: [
-        { icon: '1', label: 'Registra tu entrada', text: 'Al llegar al trabajo presiona el botón naranja "Registrar Entrada". Queda guardado con la hora exacta.' },
-        { icon: '2', c: 'teal', label: 'Registra tu salida', text: 'Al terminar tu jornada, el mismo botón cambia a "Registrar Salida" (rojo). Presiónalo antes de irte.' },
-        { icon: '3', c: 'green', label: 'Tus estadísticas', text: 'Ves cuántos días libres tienes disponibles, cuántas horas extras tienes aprobadas este mes y tus solicitudes pendientes.' },
+        { icon: '1', label: 'Tu estado de fichaje', text: 'Arriba ves tu hora de entrada y salida del día, en modo solo lectura. El fichaje se hace en el terminal de la entrada del hotel (ver la sección "Terminal de fichaje").' },
+        { icon: '2', c: 'teal', label: 'Tu turno de hoy', text: 'Ves el turno que tienes asignado para hoy, o "Día libre" si hoy descansas.' },
+        { icon: '3', c: 'green', label: 'Tus estadísticas', text: 'Ves cuántos días compensatorios tienes disponibles, cuántas horas extras tienes aprobadas este mes y tus solicitudes pendientes.' },
       ],
-      tip: '<strong>Importante:</strong> Solo puedes fichar una vez por día. Si te olvidaste de registrar la salida, avisa a tu administrador.',
+      tip: '<strong>Importante:</strong> No se ficha desde el celular ni el computador, solo en el terminal. Si olvidaste registrar la salida, avisa a tu administrador.',
       demo: 'dashboard-emp'
+    },
+    {
+      id: 'e-terminal',
+      title: 'Terminal de fichaje',
+      subtitle: 'El registro de entrada y salida se hace en el terminal ubicado en la entrada del hotel.',
+      steps: [
+        { icon: '1', label: 'Ingresa tu PIN', text: 'En la pantalla del terminal escribe tu PIN de 4 dígitos. Si no lo tienes, pídeselo a tu administrador.' },
+        { icon: '2', c: 'teal', label: 'Registrar entrada', text: 'Al iniciar tu turno ingresa el PIN y presiona "Registrar Entrada". Queda guardado con la hora exacta.' },
+        { icon: '3', c: 'green', label: 'Registrar salida', text: 'Al terminar, vuelve al terminal, ingresa tu PIN y presiona "Registrar Salida". Listo por hoy.' },
+      ],
+      tip: '<strong>Nota:</strong> El terminal conoce tu turno asignado. Si llegas muy antes de tu hora o te quedas tiempo extra, te lo avisará y puede registrar tus horas extras automáticamente para que el administrador las apruebe.',
+      demo: 'terminal-emp'
     },
     {
       id: 'e-horarios',
@@ -409,9 +421,9 @@ const SECTIONS = {
     {
       id: 'e-diaslibres',
       title: 'Días Libres',
-      subtitle: 'Solicita vacaciones, licencias médicas o permisos. El administrador los revisa y te notifica.',
+      subtitle: 'Solicita permisos médicos, permisos personales o días compensatorios. El administrador los revisa y te notifica.',
       steps: [
-        { icon: '1', label: 'Nueva solicitud', text: 'Clic en "+ Nueva solicitud". Elige el tipo (Vacaciones, Licencia médica, Permiso administrativo u Otro).' },
+        { icon: '1', label: 'Nueva solicitud', text: 'Clic en "+ Nueva solicitud". Elige el tipo: Permiso médico, Permiso personal o Día compensatorio.' },
         { icon: '2', c: 'teal', label: 'Elige las fechas', text: 'Selecciona fecha de inicio y fecha de fin. El sistema te muestra automáticamente cuántos días son.' },
         { icon: '3', c: 'green', label: 'Sigue el estado', text: 'Tu solicitud aparece como "Pendiente" hasta que el administrador la revise. Puedes ver si fue Aprobada o Rechazada en tu historial.' },
       ],
@@ -517,7 +529,7 @@ function buildDemo(id) {
         <div class="demo-dot" style="background:#ff5f57"></div>
         <div class="demo-dot" style="background:#febc2e"></div>
         <div class="demo-dot" style="background:#28c840"></div>
-        <div class="demo-url">firstpatagonia.vercel.app/${url}</div>
+        <div class="demo-url">director48.github.io/first-patagonia-hr/${url}</div>
       </div>
       <div class="demo-body">
         <div class="demo-label">Demo interactiva — prueba los elementos</div>
@@ -533,11 +545,11 @@ function buildDemo(id) {
           <div class="clock-demo-time" id="live-clock">--:--:--</div>
           <div class="clock-demo-sub">jueves 29 de mayo</div>
           <div class="clock-demo-status">
-            <div class="cdot" id="admin-cdot"></div>
-            <span id="admin-clock-txt">Sin fichar hoy</span>
+            <div class="cdot in"></div>
+            <span>En turno desde 08:03</span>
           </div>
         </div>
-        <button class="btn-demo primary" id="admin-clock-btn" onclick="demoClockAdmin()">Registrar Entrada</button>
+        <div style="text-align:right;font-size:.62rem;color:#888;max-width:115px;line-height:1.45">🔒 El fichaje se realiza en el terminal de la entrada</div>
       </div>
       <div class="mini-stats">
         <div class="mini-stat"><div class="mini-stat-icon" style="background:rgba(0,184,169,.1);color:var(--teal)">🏖</div><div><div class="mini-stat-val">15</div><div class="mini-stat-lbl">Días libres</div></div></div>
@@ -575,7 +587,7 @@ function buildDemo(id) {
         </div>
         <div class="td-row" style="grid-template-columns:1fr .8fr .8fr auto" id="row1">
           <strong style="font-size:.75rem">Ana González</strong>
-          <span>Vacaciones</span>
+          <span>Permiso personal</span>
           <span style="color:#888">2–6 jun</span>
           <div class="act-btns">
             <button class="act-btn ok"  onclick="demoApprove('row1','aprobado')">✓</button>
@@ -584,7 +596,7 @@ function buildDemo(id) {
         </div>
         <div class="td-row" style="grid-template-columns:1fr .8fr .8fr auto" id="row2">
           <strong style="font-size:.75rem">Carlos Vera</strong>
-          <span>Permiso</span>
+          <span>Permiso médico</span>
           <span style="color:#888">30 may</span>
           <div class="act-btns">
             <button class="act-btn ok"  onclick="demoApprove('row2','aprobado')">✓</button>
@@ -648,11 +660,11 @@ function buildDemo(id) {
           <div class="clock-demo-time" id="emp-clock">--:--:--</div>
           <div class="clock-demo-sub">jueves 29 de mayo</div>
           <div class="clock-demo-status">
-            <div class="cdot" id="emp-cdot"></div>
-            <span id="emp-clock-txt">Sin fichar hoy</span>
+            <div class="cdot in"></div>
+            <span>En turno desde 08:03</span>
           </div>
         </div>
-        <button class="btn-demo primary" id="emp-clock-btn" onclick="demoClockEmp()">Registrar Entrada</button>
+        <div style="text-align:right;font-size:.62rem;color:#888;max-width:115px;line-height:1.45">🔒 El fichaje se realiza en el terminal de la entrada</div>
       </div>
       <div class="mini-stats">
         <div class="mini-stat"><div class="mini-stat-icon" style="background:rgba(0,184,169,.1);color:var(--teal)">🏖</div><div><div class="mini-stat-val">15</div><div class="mini-stat-lbl">Días libres</div></div></div>
@@ -687,9 +699,9 @@ function buildDemo(id) {
       <div class="form-demo">
         <div class="fd-label">Tipo de solicitud</div>
         <select class="fd-input" id="dl-type" onchange="updateDaysPreview()">
-          <option>Vacaciones</option>
-          <option>Licencia médica</option>
-          <option>Permiso administrativo</option>
+          <option>Permiso médico</option>
+          <option>Permiso personal</option>
+          <option>Día compensatorio</option>
         </select>
         <div class="fd-row">
           <div>
@@ -703,8 +715,24 @@ function buildDemo(id) {
         </div>
         <div class="fd-preview" id="dl-preview">5 días</div>
         <div class="fd-label">Motivo</div>
-        <input type="text" class="fd-input" placeholder="Ej. Vacaciones de invierno planificadas">
+        <input type="text" class="fd-input" placeholder="Ej. Control médico planificado">
         <button class="btn-demo primary" style="width:100%;justify-content:center" onclick="demoSubmitRequest()">Enviar solicitud</button>
+      </div>
+    `),
+
+    'terminal-emp': wrap('kiosko.html', `
+      <div style="text-align:center;padding:.5rem 0">
+        <div style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:.9rem">Terminal de entrada</div>
+        <div style="display:flex;justify-content:center;gap:.55rem;margin-bottom:1.1rem">
+          ${[0,1,2,3].map(i => `<div style="width:13px;height:13px;border-radius:50%;background:${i<2?'var(--teal)':'rgba(255,255,255,.15)'}"></div>`).join('')}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;max-width:210px;margin:0 auto">
+          ${[1,2,3,4,5,6,7,8,9].map(n => `<div style="background:rgba(255,255,255,.06);border-radius:8px;padding:.6rem 0;color:#fff;font-size:1.05rem">${n}</div>`).join('')}
+          <div></div>
+          <div style="background:rgba(255,255,255,.06);border-radius:8px;padding:.6rem 0;color:#fff;font-size:1.05rem">0</div>
+          <div></div>
+        </div>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:1.1rem">Ingresa tu PIN de 4 dígitos</div>
       </div>
     `),
 
@@ -731,9 +759,6 @@ function buildDemo(id) {
 }
 
 // ── DEMO INTERACTIONS ────────────────────────────────────────
-let adminClockState = 0
-let empClockState = 0
-
 function initDemos() {
   // Live clock
   function tick() {
@@ -745,38 +770,6 @@ function initDemos() {
   }
   setInterval(tick, 1000)
   tick()
-}
-
-function demoClockAdmin() {
-  adminClockState = (adminClockState + 1) % 3
-  const btn = document.getElementById('admin-clock-btn')
-  const dot = document.getElementById('admin-cdot')
-  const txt = document.getElementById('admin-clock-txt')
-  if (!btn) return
-  const now = new Date().toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })
-  if (adminClockState === 1) {
-    btn.textContent = 'Registrar Salida'; btn.className = 'btn-demo danger'
-    dot.className = 'cdot in'; txt.textContent = `Entrada: ${now}`
-  } else if (adminClockState === 2) {
-    btn.textContent = 'Jornada completada'; btn.className = 'btn-demo done'
-    dot.className = 'cdot'; txt.textContent = `Jornada completada`
-  }
-}
-
-function demoClockEmp() {
-  empClockState = (empClockState + 1) % 3
-  const btn = document.getElementById('emp-clock-btn')
-  const dot = document.getElementById('emp-cdot')
-  const txt = document.getElementById('emp-clock-txt')
-  if (!btn) return
-  const now = new Date().toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })
-  if (empClockState === 1) {
-    btn.textContent = 'Registrar Salida'; btn.className = 'btn-demo danger'
-    dot.className = 'cdot in'; txt.textContent = `Entrada: ${now}`
-  } else if (empClockState === 2) {
-    btn.textContent = 'Jornada completada'; btn.className = 'btn-demo done'
-    dot.className = 'cdot'; txt.textContent = 'Jornada completada'
-  }
 }
 
 function selectDay(el, i) {
